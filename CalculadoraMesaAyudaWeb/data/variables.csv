@@ -5,7 +5,7 @@ IdVariable,Categoria,Variable,Tipo,Operacion,Factor,Estado
 4,Canales,Correo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 5,Canales,WhatsApp,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 6,Canales,"Web,Chat",SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-7,Infraestructura,Ubicaciòn ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
+7,Infraestructura,Ubicación ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 8,Infraestructura,Puesto de Trabajo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 9,Infraestructura,Diadema,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 10,Infraestructura,Pantalla Adicional,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
@@ -13,7 +13,7 @@ IdVariable,Categoria,Variable,Tipo,Operacion,Factor,Estado
 12,Infraestructura,Herramienta ITSM,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 13,Infraestructura,VPN,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 14,Infraestructura,Herramienta Ofimatica,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-15,Infraestructura,Implementaciòn de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
+15,Infraestructura,Implementación de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 16,Infraestructura,Plataforma monitoreo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 17,Infraestructura,Canal dedicado,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 18,Monitoreo,Servidores Pivote,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
@@ -24,14 +24,14 @@ IdVariable,Categoria,Variable,Tipo,Operacion,Factor,Estado
 23,Operación,SLA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 24,Operación,Modelo de Gobierno,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 25,Operación,Desplazamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-26,Operación,Informe de Gestiòn,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
+26,Operación,Informe de Gestión,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 27,Operación,Imprevisto,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 28,RRHH,Analistas N1,NUMERO,MULTIPLICAR,1000000,Activo
 29,RRHH,Analistas N2,NUMERO,MULTIPLICAR,2000000,Activo
 30,RRHH,Gerente de Servicio,NUMERO,MULTIPLICAR,500000,Activo
 31,RRHH,Gerente de Proyecto,NUMERO,MULTIPLICAR,800000,Activo
 32,RRHH,Reclutamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-33,RRHH,Capacitaciòn,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
+33,RRHH,Capacitación,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 34,RRHH,Operativos del talento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 35,Contractuales,Poliza /Contractuales,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
 36,Contractuales,Impuesto Timbre,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
