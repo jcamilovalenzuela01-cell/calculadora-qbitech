@@ -1,0 +1,89 @@
+<!doctype html><html><head><meta charset='utf-8'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+<style>
+#opcionesModal .modal-content{
+ border-radius:18px;
+ box-shadow:0 15px 40px rgba(0,0,0,.25);
+}
+#opcionesModal .modal-header{
+ background:#0d6efd;
+ color:white;
+}
+#opcionesModal .modal-title{
+ font-weight:bold;
+}
+#opcionesFrame{
+ border-radius:10px;
+ background:white;
+}
+</style>
+
+</head>
+<body class='container mt-4'>
+<a href='/'>🏠 Inicio</a>
+<h2>Cuestionario Admin</h2>
+<form method='post' action='/pregunta_editar' class='row g-2'>
+<input type='hidden' name='id' id='id'>
+<div class='col'><input class='form-control' name='categoria' id='categoria' placeholder='Categoria'></div>
+<div class='col'><input class='form-control' name='variable' id='variable' placeholder='Pregunta'></div>
+<div class='col'><select class='form-control' name='tipo' id='tipo'><option>LISTA</option><option>NUMERO</option><option>TEXTO</option></select></div>
+<div class='col'><select class='form-control' name='operacion' id='operacion'><option>FIJO</option><option>MULTIPLICAR</option><option>SUMAR</option></select></div>
+<div class='col'><input class='form-control' name='factor' id='factor' placeholder='Factor'></div>
+<div class='col'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
+</form>
+<hr>
+{{tabla|safe}}
+<script>
+function editar(id,c,v,t,o,f){
+document.getElementById('id').value=id;
+document.getElementById('categoria').value=c;
+document.getElementById('variable').value=v;
+document.getElementById('tipo').value=t;
+document.getElementById('operacion').value=o;
+document.getElementById('factor').value=f;
+window.scrollTo(0,0);
+}
+</script>
+
+<div class="modal fade" id="opcionesModal" tabindex="-1">
+ <div class="modal-dialog modal-xl">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title">Administrar Opciones</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+    <iframe id="opcionesFrame" style="width:100%;height:650px;border:0"></iframe>
+   </div>
+  </div>
+ </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('click',function(e){
+ let b=e.target.closest('.btn-opciones');
+ if(!b) return;
+ e.preventDefault();
+ document.getElementById('opcionesFrame').src='/opciones_admin/'+b.dataset.id;
+ const modal=new bootstrap.Modal(document.getElementById('opcionesModal'));
+ modal.show();
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const modalEl=document.getElementById('opcionesModal');
+  if(modalEl){
+    modalEl.addEventListener('hidden.bs.modal', function(){
+      document.querySelectorAll('.modal-backdrop').forEach(e=>e.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow='';
+      document.body.style.paddingRight='';
+      const f=document.getElementById('opcionesFrame');
+      if(f){ f.src='about:blank'; }
+    });
+  }
+});
+</script>
+
+</body></html>

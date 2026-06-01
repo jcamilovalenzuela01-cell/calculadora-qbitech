@@ -1,0 +1,4 @@
+usuario,clave,rol
+admin,admin,Administrador
+operador,operador,Operador
+consulta,consulta,Consulta
