@@ -19,20 +19,70 @@
 </style>
 
 </head>
-<body class='container mt-4'>
-<a href='/'>🏠 Inicio</a>
+<body>
+<div class='container-fluid mt-3'><div class='row'>
+<div class='col-md-2 border-end'>
+<h5>Administración</h5>
+<div class='list-group'>
+<a href='/' class='list-group-item list-group-item-action'>🏠 Inicio</a>
+<a href='/cuestionario_admin?admin=1' class='list-group-item list-group-item-action'>📋 Formularios</a>
+<a href='?admin=1&vista=usuarios' class='list-group-item list-group-item-action'>👥 Usuarios</a>
+<a href='/cuestionario_admin?admin=1&vista=cotizaciones' class='list-group-item list-group-item-action'>📁 Cotizaciones</a>
+<a href='/logout' class='list-group-item list-group-item-action text-danger'>🚪 Cerrar Sesión</a>
+</div>
+</div>
+<div class='col-md-10'>
+
+
+{% if request.args.get('vista')=='cotizaciones' %}
+<h2>📁 Cotizaciones</h2>
+{{tabla_cotizaciones|safe}}
+
+{% elif request.args.get('vista')=='usuarios' %}
+<h2>Usuario Admin</h2>
+<hr>
+<h3>Administración de Usuarios</h3>
+<form id='frmUsuarioNuevo' class='row g-2 mb-3'>
+<div class='col-md-2'><input class='form-control' name='usuario' placeholder='Usuario'></div>
+<div class='col-md-2'><input class='form-control' name='clave' placeholder='Clave'></div>
+<div class='col-md-3'><input class='form-control' name='nombre' placeholder='Nombre'></div>
+<div class='col-md-2'><select class='form-control' name='rol'><option>Administrador</option><option>Operador</option><option>Consulta</option></select></div>
+<div class='col-md-1'><button type='submit' class='btn btn-success'>Guardar</button></div>
+</form>
+<table class='table table-bordered'>
+<thead><tr><th>ID</th><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Formulario</th><th>Acciones</th></tr></thead>
+<tbody>
+{% for u in usuarios %}
+<tr><td>{{u.idusuario}}</td><td>{{u.usuario}}</td><td>{{u.nombre}}</td><td>{{u.rol}}</td><td>{{u.formularios_txt}}</td>
+<td><button type='button' class='btn btn-warning btn-sm' data-bs-toggle='modal' onclick="abrirEditar(this)" data-id='{{u.idusuario}}' data-usuario='{{u.usuario}}' data-clave='{{u.clave}}' data-nombre='{{u.nombre}}' data-rol='{{u.rol}}' data-bs-target='#editarUsuarioModal'>✏️</button>
+<button type='button' class='btn btn-secondary btn-sm' data-bs-toggle='modal' onclick="abrirConfig(this)" data-id='{{u.idusuario}}'>⚙️</button>
+<button type='button' class='btn btn-danger btn-sm' onclick='eliminarUsuario({{u.idusuario}})'>🗑️</button></td></tr>
+{% endfor %}
+</tbody></table>
+
+{% else %}
 <h2>Cuestionario Admin</h2>
+<div class='row mb-3'>
+<div class='col-md-4'>
+<label><b>Formulario</b></label>
+<select class='form-control' id='formulario' onchange="window.location='/cuestionario_admin?admin=1&formulario='+this.value">
+{% for f in formularios %}
+<option value='{{f.IdFormulario}}' {% if formulario_id|string==f.IdFormulario|string %}selected{% endif %}>{{f.Nombre}}</option>
+{% endfor %}
+</select>
+</div>
+<div class='col-md-8 d-flex align-items-end'>
+<a href='#' onclick='abrirModalFormularios();return false;' class='btn btn-success'>📋 Administración de Formularios</a>
+</div></div>
 <form method='post' action='/pregunta_editar' class='row g-2'>
+<input type='hidden' name='formulario_id' id='formulario_id_hidden' value=''>
 <input type='hidden' name='id' id='id'>
 <div class='col'><input class='form-control' name='categoria' id='categoria' placeholder='Categoria'></div>
 <div class='col'><input class='form-control' name='variable' id='variable' placeholder='Pregunta'></div>
-<div class='col'><select class='form-control' name='tipo' id='tipo'><option>LISTA</option><option>NUMERO</option><option>TEXTO</option></select></div>
-<div class='col'><select class='form-control' name='operacion' id='operacion'><option>FIJO</option><option>MULTIPLICAR</option><option>SUMAR</option></select></div>
-<div class='col'><input class='form-control' name='factor' id='factor' placeholder='Factor'></div>
 <div class='col'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
-</form>
-<hr>
+</form><hr>
 {{tabla|safe}}
+{% endif %}
 <script>
 function editar(id,c,v,t,o,f){
 document.getElementById('id').value=id;
@@ -83,6 +133,285 @@ document.addEventListener('DOMContentLoaded', function(){
       if(f){ f.src='about:blank'; }
     });
   }
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const s=document.getElementById('formulario');
+ const p=new URLSearchParams(window.location.search);
+ const f=p.get('formulario')||'';
+ if(f) s.value=f;
+ const h=document.getElementById('formulario_id_hidden');
+ if(h) h.value=s.value;
+ s.addEventListener('change',()=>{ if(h) h.value=s.value; });
+});
+</script>
+
+<div class="modal fade" id="formulariosModal" tabindex="-1">
+ <div class="modal-dialog modal-lg">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title">Administración de Formularios</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+
+<div class="mb-2"><input id="frm_nombre" class="form-control" placeholder="Nombre formulario"></div>
+<div class="mb-2"><textarea id="frm_desc" class="form-control" placeholder="Descripción"></textarea></div>
+<button type="button" class="btn btn-success" onclick="crearFormulario()">➕ Crear Formulario</button>
+<hr>
+<table class="table table-bordered" id="tblFormularios">
+<thead><tr><th>ID</th><th>Formulario</th><th>Descripción</th><th>Acciones</th></tr></thead>
+<tbody></tbody>
+</table>
+   </div></div></div></div>
+<script>
+function abrirModalFormularios(){new bootstrap.Modal(document.getElementById('formulariosModal')).show();cargarFormularios();}
+function cargarFormularios(){
+ fetch('/api/formularios').then(r=>r.json()).then(d=>{
+ let h='';
+ d.forEach(f=>{
+  let id=f.IdFormulario || f.idFormulario || f.id || 0;
+  let nom=f.Nombre||f.nombre||'';
+  let des=f.Descripcion||f.descripcion||'';
+  h+=`<tr><td>${id}</td><td>${nom}</td><td>${des}</td><td><button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button></td></tr>`;
+ });
+ document.querySelector('#tblFormularios tbody').innerHTML=h;
+ });
+}
+function crearFormulario(){
+ const fd=new FormData();
+ fd.append('nombre',document.getElementById('frm_nombre').value);
+ fd.append('descripcion',document.getElementById('frm_desc').value);
+ fetch('/formulario_crear',{method:'POST',body:fd}).then(r=>r.json()).then(x=>{alert(x.mensaje||'Formulario creado');cargarFormularios();location.reload();});
+}
+function eliminarFormulario(id){
+ fetch('/formulario_eliminar/'+id,{method:'POST'}).then(()=>{cargarFormularios();location.reload();});
+}
+</script>
+
+
+
+
+
+</div>
+
+
+
+<div class="modal fade" id="editarUsuarioModal"><div class="modal-dialog"><div class="modal-content">
+<div class="modal-header"><h5>Editar Usuario</h5></div>
+<div class="modal-body">
+<form id="editarUsuarioForm">
+<input type="hidden" id="eid" name="idusuario">
+<input class="form-control mb-2" id="eusuario" name="usuario">
+<input class="form-control mb-2" id="eclave" name="clave" type="password"><br><label>Nombre</label><input class="form-control mb-2" id="enombre" name="nombre">
+<select class="form-control mb-2" id="erol" name="rol"><option>Administrador</option><option>Operador</option><option>Consulta</option></select>
+<button class="btn btn-primary">Actualizar</button>
+</form></div></div></div></div>
+<script>
+function abrirEditar(b){
+document.getElementById('eid').value=b.dataset.id||'';
+if(document.getElementById('eusuario')) document.getElementById('eusuario').value=b.dataset.usuario||'';
+if(document.getElementById('enombre')) var c=document.getElementById('eclave'); if(c) c.value=b.dataset.clave||'';
+document.getElementById('enombre').value=b.dataset.nombre||'';
+if(document.getElementById('erol')) document.getElementById('erol').value=b.dataset.rol||'';
+}
+document.addEventListener('submit',async e=>{
+if(e.target.id==='editarUsuarioForm'){
+e.preventDefault();
+let r=await fetch('/usuario_actualizar',{method:'POST',body:new FormData(e.target)});
+if(r.ok){
+alert('Usuario actualizado correctamente');
+setTimeout(function(){
+    location.reload();
+},300);
+let fila=document.querySelector('[data-id="'+eid.value+'"]')?.closest('tr');
+if(fila){
+ if(fila.cells.length>3){
+   fila.cells[1].innerText=eusuario.value;
+   fila.cells[2].innerText=enombre.value;
+   fila.cells[3].innerText=erol.value;
+ }
+}
+bootstrap.Modal.getInstance(document.getElementById('editarUsuarioModal'))?.hide();
+}
+}});
+</script>
+
+<script>
+async function cargarFormulariosUsuario(id){
+ console.log('cargar formularios',id);
+}
+async function guardarConfigUsuario(){
+ let fd=new FormData();
+ fd.append('idusuario',document.getElementById('cfgUid').value);
+ document.querySelectorAll('#listaForms input:checked').forEach(x=>fd.append('formularios',x.value));
+ let r=await fetch('/usuario_formularios_guardar',{method:'POST',body:fd});
+ if(r.ok){ alert('Configuración guardada correctamente'); }
+}
+</script>
+
+<script>
+function actualizarContadorFormularios(uid,cantidad){
+  let el=document.querySelector('[data-userid="'+uid+'"] .cnt-formularios');
+  if(el){ el.innerText=cantidad; }
+}
+</script>
+
+<script>
+
+</script>
+
+
+</div>
+
+<script>
+
+</script>
+<div class="modal fade" id="configUsuarioModal" tabindex="-1">
+ <div class="modal-dialog modal-lg">
+  <div class="modal-content">
+   <div class="modal-header">
+    <h5 class="modal-title">Configurar Formularios</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+      <input type="hidden" id="cfgUid">
+      <div id="listaForms"></div>
+      <hr>
+      <button type="button" class="btn btn-primary" onclick="guardarConfigUsuario()">
+         Actualizar Formularios
+      </button>
+   </div>
+  </div>
+ </div>
+</div>
+
+<script>
+async function abrirConfig(btn){
+   const uid = btn.dataset.id;
+   document.getElementById('cfgUid').value = uid;
+
+   let html = '';
+   try{
+      const r1 = await fetch('/api/formularios_todos');
+      const todos = await r1.json();
+
+      const r2 = await fetch('/api/formularios_usuario/' + uid);
+      const asignados = await r2.json();
+
+      const marcados = new Set(
+          (asignados || []).filter(x=>x.checked).map(x=>String(x.id))
+      );
+
+      html = (todos || []).map(f=>{
+         const id = f.IdFormulario || f.id || f.idformulario || '';
+         const nombre = f.Nombre || f.nombre || f.formulario || ('Formulario '+id);
+         return `<div class="form-check">
+           <input class="form-check-input" type="checkbox" value="${id}" ${marcados.has(String(id))?'checked':''}>
+           <label class="form-check-label">${nombre}</label>
+         </div>`;
+      }).join('');
+   }catch(e){
+      html = '<div class="alert alert-danger">Error cargando formularios</div>';
+   }
+
+   document.getElementById('listaForms').innerHTML = html;
+
+   new bootstrap.Modal(document.getElementById('configUsuarioModal')).show();
+}
+
+async function guardarConfigUsuario(){
+   const fd = new FormData();
+   fd.append('idusuario', document.getElementById('cfgUid').value);
+
+   document.querySelectorAll('#listaForms input:checked')
+      .forEach(x => fd.append('formularios', x.value));
+
+   const r = await fetch('/usuario_formularios_guardar',{
+      method:'POST',
+      body:fd
+   });
+
+   if(r.ok){
+      alert('Formularios actualizados correctamente');
+      location.reload();
+   }
+}
+</script>
+
+
+<div class="modal fade" id="mensajeModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Aviso</h5></div>
+      <div class="modal-body"><span id="mensajeTexto"></span></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function mostrarMensaje(msg){
+ document.getElementById('mensajeTexto').innerText=msg;
+ new bootstrap.Modal(document.getElementById('mensajeModal')).show();
+}
+</script>
+
+<script>
+function eliminarUsuario(id){
+ fetch('/usuario_eliminar/' + id)
+ .then(r=>r.json())
+ .then(d=>{
+   if(d.ok===false){
+      document.getElementById('mensajeTexto').innerText=d.mensaje;
+      new bootstrap.Modal(document.getElementById('mensajeModal')).show();
+      return;
+   }
+   location.reload();
+ })
+ .catch(err=>{
+   alert('Error eliminando usuario');
+   console.error(err);
+ });
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+
+ const frm=document.getElementById('frmUsuarioNuevo');
+ if(!frm) return;
+
+ frm.addEventListener('submit',async function(e){
+
+    e.preventDefault();
+
+    const fd=new FormData(frm);
+
+    const r=await fetch('/usuario_guardar',{
+       method:'POST',
+       body:fd
+    });
+
+    const d=await r.json();
+
+    document.getElementById('mensajeTexto').innerText =
+      d.ok ? 'Usuario creado correctamente' : (d.mensaje || 'Error');
+
+    new bootstrap.Modal(
+      document.getElementById('mensajeModal')
+    ).show();
+
+    if(d.ok){
+       frm.reset();
+       setTimeout(()=>location.reload(),1000);
+    }
+ });
+
 });
 </script>
 

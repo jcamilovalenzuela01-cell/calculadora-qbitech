@@ -270,19 +270,29 @@ img{max-width:100%;height:auto;}
 
         <hr>
 
-        <a href="/cotizaciones" style="color:white">
-            📁 Cotizaciones
-        </a>
+        <h6>📋 Formularios</h6>
 
-        <br>
+{% if formularios %}
+    {% for formulario in formularios %}
+    <a href="/formulario/{{ formulario.IdFormulario }}" style="color:white">
+        📄 {{ formulario.Nombre }}
+    </a>
+    {% endfor %}
+{% else %}
+    <div style="padding:10px;color:#ccc">Sin formularios asignados</div>
+{% endif %}
 
-        <a href="/admin_login" style="color:white">
-            📝 Administrador
-        </a>
+<hr>
 
-    </div>
 
-    <div class="col-md-7 p-3">
+<a href="/admin_login" style="color:white">
+    📝 Administrador
+</a>
+
+</div>
+
+<div class="col-md-7 p-3">
+{% if sin_formularios %}<div class="alert alert-warning m-3">No tiene formularios asignados. Contacte al administrador.</div>{% else %}
 
         <div class="row mb-3" style="display:none;">
 
@@ -539,6 +549,39 @@ function limpiarFormulario(){
     window.ult={}; if(chartCategorias){chartCategorias.destroy();chartCategorias=null;}
 }
 
+</script>
+
+
+<div id="modalFormularios" style="display:none;position:fixed;top:10%;left:20%;width:60%;background:white;border:1px solid #ccc;padding:20px;z-index:9999">
+<h3>Administración de Formularios</h3>
+<p>Aquí podrá crear y actualizar formularios sin salir del administrador.</p>
+<button onclick="document.getElementById('modalFormularios').style.display='none'">Cerrar</button>
+</div>
+<script>
+function abrirModalFormularios(){
+ document.getElementById('modalFormularios').style.display='block';
+}
+</script>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ const btns=[...document.querySelectorAll('button,a')].filter(x=>/guardar cotiz/i.test(x.innerText||''));
+ btns.forEach(btn=>{
+   btn.addEventListener('click',function(e){
+      let tieneDatos=false;
+      document.querySelectorAll('input,select,textarea').forEach(c=>{
+        if(c.type==='hidden') return;
+        if((c.value||'').toString().trim()!=='') tieneDatos=true;
+      });
+      if(!tieneDatos){
+        e.preventDefault();
+        alert('Debe diligenciar al menos un campo antes de guardar la cotización');
+        return false;
+      }
+   },true);
+ });
+});
 </script>
 
 </body>
