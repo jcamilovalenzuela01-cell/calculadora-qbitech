@@ -1,4 +1,4 @@
-usuario,clave,rol
-admin,admin,Administrador
-operador,operador,Operador
-consulta,consulta,Consulta
+IdUsuario,Usuario,Clave,Nombre,Rol,IdFormulario,Activo
+1,admin,admin,Administrador General,Administrador,1,1
+2,operador,operador,Usuario Operador,Operador,1,1
+3,consulta,consulta,Usuario Consulta,Consulta,1,1

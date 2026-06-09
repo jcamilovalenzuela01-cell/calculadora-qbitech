@@ -1,43 +1,46 @@
-IdVariable,Categoria,Variable,Tipo,Operacion,Factor,Estado
-1,Cobertura,Horario de atención,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-2,Cobertura,Idioma,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-3,Canales,Teléfono,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-4,Canales,Correo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-5,Canales,WhatsApp,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-6,Canales,"Web,Chat",SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-7,Infraestructura,Ubicación ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-8,Infraestructura,Puesto de Trabajo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-9,Infraestructura,Diadema,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-10,Infraestructura,Pantalla Adicional,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-11,Infraestructura,PC,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-12,Infraestructura,Herramienta ITSM,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-13,Infraestructura,VPN,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-14,Infraestructura,Herramienta Ofimatica,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-15,Infraestructura,Implementación de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-16,Infraestructura,Plataforma monitoreo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-17,Infraestructura,Canal dedicado,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-18,Monitoreo,Servidores Pivote,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-19,Operación,Usuarios soportados,NUMERO,MULTIPLICAR,100,Activo
-20,Operación,Tickets mensuales,NUMERO,MULTIPLICAR,10,Activo
-21,Operación,Sedes,NUMERO,MULTIPLICAR,3,Activo
-22,Operación,Soporte,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-23,Operación,SLA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-24,Operación,Modelo de Gobierno,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-25,Operación,Desplazamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-26,Operación,Informe de Gestión,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-27,Operación,Imprevisto,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-28,RRHH,Analistas N1,NUMERO,MULTIPLICAR,1000000,Activo
-29,RRHH,Analistas N2,NUMERO,MULTIPLICAR,2000000,Activo
-30,RRHH,Gerente de Servicio,NUMERO,MULTIPLICAR,500000,Activo
-31,RRHH,Gerente de Proyecto,NUMERO,MULTIPLICAR,800000,Activo
-32,RRHH,Reclutamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-33,RRHH,Capacitación,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-34,RRHH,Operativos del talento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-35,Contractuales,Poliza /Contractuales,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-36,Contractuales,Impuesto Timbre,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-37,Contractuales,Impuesto Estampillas,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-38,Contractuales,ICA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-39,Contractuales,Comisiones,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-40,Contractuales,Costo Administrativo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-41,Contractuales,Costo Financiera de la Cartera,SELECCIÓN LISTA DESPLEGABLE,FIJO,0,Activo
-42,prueba,prueba,NUMERO,FIJO,,Activo
+IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado
+1,1,Cobertura,Horario de atención,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+2,1,Cobertura,Idioma,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+3,1,Canales,Teléfono,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+4,1,Canales,Correo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+5,1,Canales,WhatsApp,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+6,1,Canales,"Web,Chat",SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+7,1,Infraestructura,Ubicación ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+8,1,Infraestructura,Puesto de Trabajo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+9,1,Infraestructura,Diadema,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+10,1,Infraestructura,Pantalla Adicional,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+11,1,Infraestructura,PC,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+12,1,Infraestructura,Herramienta ITSM,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+13,1,Infraestructura,VPN,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+14,1,Infraestructura,Herramienta Ofimatica,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+15,1,Infraestructura,Implementación de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+16,1,Infraestructura,Plataforma monitoreo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+17,1,Infraestructura,Canal dedicado,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+18,1,Monitoreo,Servidores Pivote,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+19,1,Operación,Usuarios soportados,NUMERO,MULTIPLICAR,100.0,Activo
+20,1,Operación,Tickets mensuales,NUMERO,MULTIPLICAR,10.0,Activo
+21,1,Operación,Sedes,NUMERO,MULTIPLICAR,3.0,Activo
+22,1,Operación,Soporte,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+23,1,Operación,SLA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+24,1,Operación,Modelo de Gobierno,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+25,1,Operación,Desplazamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+26,1,Operación,Informe de Gestión,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+27,1,Operación,Imprevisto,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+28,1,RRHH,Analistas N1,NUMERO,MULTIPLICAR,1000000.0,Activo
+29,1,RRHH,Analistas N2,NUMERO,MULTIPLICAR,2000000.0,Activo
+30,1,RRHH,Gerente de Servicio,NUMERO,MULTIPLICAR,500000.0,Activo
+31,1,RRHH,Gerente de Proyecto,NUMERO,MULTIPLICAR,800000.0,Activo
+32,1,RRHH,Reclutamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+33,1,RRHH,Capacitación,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+34,1,RRHH,Operativos del talento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+35,1,Contractuales,Poliza /Contractuales,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+36,1,Contractuales,Impuesto Timbre,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+37,1,Contractuales,Impuesto Estampillas,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+38,1,Contractuales,ICA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+39,1,Contractuales,Comisiones,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+40,1,Contractuales,Costo Administrativo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+41,1,Contractuales,Costo Financiera de la Cartera,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
+42,1,prueba,prueba,NUMERO,FIJO,,Activo
+43,2,Cobertura,Recurso,LISTA,,,
+44,2,Cobertura,Disponibilidad,LISTA,,,
+45,3,prueba,prueba,LISTA,FIJO,,Activo
