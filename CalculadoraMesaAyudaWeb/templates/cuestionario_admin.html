@@ -1,3 +1,4 @@
+<!-- V63 chart patch applied -->
 <!doctype html><html><head><meta charset='utf-8'>
 <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 <style>
@@ -18,14 +19,27 @@
 }
 </style>
 
+
+<style>
+.dashboard-card{background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.08);border:none;margin-bottom:15px}
+.dashboard-card .card-body{text-align:center;padding:20px}
+.kpi-value{font-size:2.4rem;font-weight:700;color:#2563EB}
+.chart-panel{background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.08);padding:10px;min-height:340px}
+.chart-title{text-align:center;font-weight:bold;margin:10px}
+
+.chart-card{height:340px;}
+.chart-card .card-body{height:280px;padding:10px;display:flex;justify-content:center;align-items:center;}
+.dashboard-chart{width:100%!important;height:240px!important;max-height:240px!important;}
+
+</style>
 </head>
 <body>
 <div class='container-fluid mt-3'><div class='row'>
 <div class='col-md-2 border-end'>
 <h5>Administración</h5>
 <div class='list-group'>
-<a href='/' class='list-group-item list-group-item-action'>🏠 Inicio</a>
-<a href='/cuestionario_admin?admin=1' class='list-group-item list-group-item-action'>📋 Formularios</a>
+<a href='/cuestionario_admin?admin=1&vista=dashboard' class='list-group-item list-group-item-action'>🏠 Inicio</a>
+<a href='/cuestionario_admin?admin=1&vista=formularios' class='list-group-item list-group-item-action'>📋 Formularios</a>
 <a href='?admin=1&vista=usuarios' class='list-group-item list-group-item-action'>👥 Usuarios</a>
 <a href='/cuestionario_admin?admin=1&vista=cotizaciones' class='list-group-item list-group-item-action'>📁 Cotizaciones</a>
 <a href='/logout' class='list-group-item list-group-item-action text-danger'>🚪 Cerrar Sesión</a>
@@ -34,7 +48,42 @@
 <div class='col-md-10'>
 
 
-{% if request.args.get('vista')=='cotizaciones' %}
+{% if vista=='dashboard' %}
+<h2>📊 Dashboard Administrativo</h2>
+<div class="row mb-4">
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>👥 Usuarios</h5><h2>{{dashboard.usuarios}}</h2></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>📋 Formularios</h5><h2>{{dashboard.formularios}}</h2></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>📁 Cotizaciones</h5><h2>{{dashboard.cotizaciones}}</h2></div></div></div>
+</div>
+<div class="row mt-4">
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Usuarios</div><div class="card-body"><canvas id="chartUsuarios" class="dashboard-chart"></canvas></div></div></div>
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Formularios</div><div class="card-body"><canvas id="chartFormularios" class="dashboard-chart"></canvas></div></div></div>
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Cotizaciones</div><div class="card-body"><canvas id="chartCotizaciones" class="dashboard-chart"></canvas></div></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ if(window.Chart){
+  new Chart(document.getElementById('chartUsuarios'),{
+    type:'doughnut',
+    data:{labels:['Usuarios'],datasets:[{label:'Usuarios',data:[{{ dashboard.usuarios }}],backgroundColor:['#3B82F6'],hoverOffset:12}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+  });
+  new Chart(document.getElementById('chartFormularios'),{
+    type:'bar',
+    data:{labels:['Formularios'],datasets:[{label:'Formularios',data:[{{ dashboard.formularios }}],backgroundColor:'#10B981',borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+  });
+  new Chart(document.getElementById('chartCotizaciones'),{
+    type:'line',
+    data:{labels: {{ (dashboard.get('cotizaciones_labels',['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']))|tojson }},datasets:[{label:'Cotizaciones por mes',data: {{ (dashboard.get('cotizaciones_data',[0,0,0,0,0,0,0,0,0,0,0,0]))|tojson }},borderColor:'#6366F1',backgroundColor:'rgba(99,102,241,.15)',fill:true,tension:.35,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+  });
+ }
+});
+</script>
+<div class="alert alert-info">Seleccione una opción del menú lateral para administrar Formularios, Usuarios o Cotizaciones.</div>
+{% elif request.args.get('vista')=='cotizaciones' %}
 <h2>📁 Cotizaciones</h2>
 {{tabla_cotizaciones|safe}}
 
@@ -60,6 +109,80 @@
 {% endfor %}
 </tbody></table>
 
+{% elif request.args.get('vista')=='formularios' %}
+<h2>Administración de Formularios</h2>
+<ul class="nav nav-tabs">
+<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabf">Formularios</button></li>
+<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabp">Preguntas</button></li>
+</ul>
+<div class="tab-content border p-3">
+<div class="tab-pane fade show active" id="tabf">
+<input type="hidden" id="idFormulario">
+<div class="mb-2">
+  <input id="nombreFormulario" class="form-control" placeholder="Nombre formulario">
+</div>
+<div class="mb-2">
+  <textarea id="descripcionFormulario" class="form-control" placeholder="Descripción"></textarea>
+</div>
+<div class="mb-3">
+  <button class="btn btn-success" onclick="crearFormularioAdmin()">Crear / Modificar</button>
+</div>
+<table class="table table-bordered">
+<thead>
+<tr><th>ID</th><th>Formulario</th><th>Descripción</th><th>Acciones</th></tr>
+</thead>
+<tbody id="tblFormulariosBody"></tbody>
+</table>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  var w=document.getElementById('tblFormulariosWrap');
+  var b=document.getElementById('tblFormulariosBody');
+  if(w && b){
+    const obs=new MutationObserver(function(){
+      if(!b.innerHTML.trim() && w.innerHTML.trim()){
+        b.innerHTML=w.innerHTML.replace(/<\/?table[^>]*>/g,'').replace(/<thead[\s\S]*?<\/thead>/,'').replace(/<tbody[^>]*>|<\/tbody>/g,'');
+      }
+    });
+    obs.observe(w,{childList:true,subtree:true});
+  }
+});
+</script>
+<div id="tblFormulariosWrap" style="display:none"></div>
+</div>
+<div class="tab-pane fade" id="tabp">
+<label>Formulario</label>
+<select id="frmPreguntas" class="form-control mb-2"></select>
+
+<div class="row g-2 mb-3">
+<input type="hidden" id="id">
+<div class="col-md-2"><input class="form-control" id="categoria" placeholder="Categoria"></div>
+<div class="col-md-3"><input class="form-control" id="variable" placeholder="Pregunta"></div>
+<div class="col-md-2">
+<select class="form-control" id="tipo">
+<option value="LISTA">LISTA</option><option value="LISTA_DEPENDIENTE">LISTA DEPENDIENTE</option>
+<option value="NUMERO">NUMERO</option>
+</select>
+</div>
+<div class="col-md-2">
+<select class="form-control" id="operacion">
+<option value="FIJO">FIJO</option>
+<option value="SUMAR">SUMAR</option>
+<option value="MULTIPLICAR">MULTIPLICAR</option>
+</select>
+</div>
+<div class="col-md-1"><input class="form-control" id="factor" type="number" step="0.01" placeholder="Factor"></div>
+<div class="col-md-2"><button type="button" class="btn btn-primary" onclick="guardarPreguntaAdmin()">Guardar / Actualizar</button></div>
+</div>
+
+<table class="table">
+<thead><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Acciones</th></tr></thead>
+<tbody id="preguntasBody"></tbody>
+</table>
+</div>
+</div>
+<script>
+setTimeout(()=>{ if(typeof cargarFormularios==='function') cargarFormularios();},300);
+</script>
 {% else %}
 <h2>Cuestionario Admin</h2>
 <div class='row mb-3'>
@@ -77,9 +200,12 @@
 <form method='post' action='/pregunta_editar' class='row g-2'>
 <input type='hidden' name='formulario_id' id='formulario_id_hidden' value=''>
 <input type='hidden' name='id' id='id'>
-<div class='col'><input class='form-control' name='categoria' id='categoria' placeholder='Categoria'></div>
-<div class='col'><input class='form-control' name='variable' id='variable' placeholder='Pregunta'></div>
-<div class='col'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
+<div class='col-md-2'><input class='form-control' name='categoria' id='categoria' placeholder='Categoria'></div>
+<div class='col-md-3'><input class='form-control' name='variable' id='variable' placeholder='Pregunta'></div>
+<div class='col-md-2'><select class='form-control' id='tipo' name='tipo'><option value='LISTA'>LISTA</option><option value='NUMERO'>NUMERO</option></select></div>
+<div class='col-md-2'><select class='form-control' id='operacion' name='operacion'><option value='FIJO'>FIJO</option><option value='SUMAR'>SUMAR</option><option value='MULTIPLICAR'>MULTIPLICAR</option></select></div>
+<div class='col-md-1'><input class='form-control' id='factor' name='factor' type='number' step='0.01' placeholder='Factor'></div>
+<div class='col-md-2'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
 </form><hr>
 {{tabla|safe}}
 {% endif %}
@@ -140,6 +266,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 document.addEventListener('DOMContentLoaded',function(){
  const s=document.getElementById('formulario');
+ if(!s) return;
  const p=new URLSearchParams(window.location.search);
  const f=p.get('formulario')||'';
  if(f) s.value=f;
@@ -157,7 +284,12 @@ document.addEventListener('DOMContentLoaded',function(){
     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
    </div>
    <div class="modal-body">
-
+<ul class="nav nav-tabs" role="tablist">
+<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabFormularios">Formularios</button></li>
+<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabPreguntas">Preguntas</button></li>
+</ul>
+<div class="tab-content mt-3">
+<div class="tab-pane fade show active" id="tabFormularios">
 <div class="mb-2"><input id="frm_nombre" class="form-control" placeholder="Nombre formulario"></div>
 <div class="mb-2"><textarea id="frm_desc" class="form-control" placeholder="Descripción"></textarea></div>
 <button type="button" class="btn btn-success" onclick="crearFormulario()">➕ Crear Formulario</button>
@@ -166,6 +298,19 @@ document.addEventListener('DOMContentLoaded',function(){
 <thead><tr><th>ID</th><th>Formulario</th><th>Descripción</th><th>Acciones</th></tr></thead>
 <tbody></tbody>
 </table>
+</div>
+<div class="tab-pane fade" id="tabPreguntas">
+<div class="mb-3">
+<label>Formulario</label>
+<select id="frmPreguntas" class="form-control" onchange="cargarPreguntasFormulario()"></select>
+</div>
+<table class="table table-bordered">
+<thead><tr><th>ID</th><th>Categoría</th><th>Pregunta</th><th>Acciones</th></tr></thead>
+<tbody id="preguntasBody"></tbody>
+</table>
+<button class="btn btn-primary">➕ Crear Pregunta</button>
+</div>
+</div>
    </div></div></div></div>
 <script>
 function abrirModalFormularios(){new bootstrap.Modal(document.getElementById('formulariosModal')).show();cargarFormularios();}
@@ -176,16 +321,59 @@ function cargarFormularios(){
   let id=f.IdFormulario || f.idFormulario || f.id || 0;
   let nom=f.Nombre||f.nombre||'';
   let des=f.Descripcion||f.descripcion||'';
-  h+=`<tr><td>${id}</td><td>${nom}</td><td>${des}</td><td><button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button></td></tr>`;
+  h+=`<tr>
+<td>${id}</td>
+<td>${nom}</td>
+<td>${des}</td>
+<td>
+<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">✏️</button>
+<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button>
+<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">⚙️</button>
+</td>
+</tr>`;
  });
- document.querySelector('#tblFormularios tbody').innerHTML=h;
+ const body=document.getElementById('tblFormulariosBody');
+if(body){ body.innerHTML=h; }
+const tbl=document.querySelector('#tblFormularios tbody');
+if(tbl){ tbl.innerHTML=h; }
  });
 }
+
+async function renderConceptos(){
+ const id=document.getElementById('cfgFormularioId').value;
+ const r=await fetch('/api/conceptos/'+id);
+ const data=await r.json();
+ const tb=document.getElementById('tablaConceptos');
+ tb.innerHTML='';
+ data.forEach(c=>{
+ tb.insertAdjacentHTML('beforeend',`<tr><td>${c.concepto}</td><td>${c.tipo}</td><td>${c.valor}</td><td>${(c.activo==1?'Activo':'Inactivo')}</td><td><button class='btn btn-warning btn-sm' onclick="editarConceptoTmp('${c.concepto}','${c.tipo}','${c.valor}')">✏️</button> <button class='btn btn-danger btn-sm' onclick="eliminarConcepto(this.closest('tr').children[0].innerText)">🗑️</button></td></tr>`);
+ });
+}
+function abrirConfiguracionFormulario(id){
+ document.getElementById('cfgFormularioId').value=id; renderConceptos();
+ var m=new bootstrap.Modal(document.getElementById('configFormularioModal'));
+ m.show();
+}
+
 function crearFormulario(){
+ const id=(document.getElementById('idFormulario')?.value||'').trim();
+ const nombre=(document.getElementById('nombreFormulario')?.value||'').trim();
+ const descripcion=(document.getElementById('descripcionFormulario')?.value||'').trim();
+ if(!nombre){ alert('Debe diligenciar el nombre del formulario'); return; }
+ if(!descripcion){ alert('Debe diligenciar la descripción'); return; }
  const fd=new FormData();
- fd.append('nombre',document.getElementById('frm_nombre').value);
- fd.append('descripcion',document.getElementById('frm_desc').value);
- fetch('/formulario_crear',{method:'POST',body:fd}).then(r=>r.json()).then(x=>{alert(x.mensaje||'Formulario creado');cargarFormularios();location.reload();});
+ fd.append('idFormulario',id);
+ fd.append('nombre',nombre);
+ fd.append('descripcion',descripcion);
+ fetch('/formulario_crear',{method:'POST',body:fd})
+   .then(r=>r.json())
+   .then(x=>{
+      alert(x.mensaje||(id?'Formulario actualizado correctamente':'Formulario creado correctamente'));
+      document.getElementById('idFormulario').value='';
+      document.getElementById('nombreFormulario').value='';
+      document.getElementById('descripcionFormulario').value='';
+      cargarFormularios();
+   });
 }
 function eliminarFormulario(id){
  fetch('/formulario_eliminar/'+id,{method:'POST'}).then(()=>{cargarFormularios();location.reload();});
@@ -415,4 +603,306 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 </script>
 
+
+<script>
+function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor){
+ document.getElementById('id').value=id;
+ document.getElementById('categoria').value=categoria||'';
+ document.getElementById('variable').value=variable||'';
+ if(document.getElementById('tipo'))document.getElementById('tipo').value=tipo||'LISTA';
+ if(document.getElementById('operacion'))document.getElementById('operacion').value=operacion||'FIJO';
+ if(document.getElementById('factor'))document.getElementById('factor').value=factor||0;
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function eliminarPreguntaAdmin(id){
+ if(!confirm('¿Eliminar la pregunta?')) return;
+ fetch('/pregunta_eliminar/'+id).then(()=>cargarPreguntasFormulario());
+}
+function configurarPreguntaAdmin(id){
+ document.getElementById('opcionesFrame').src='/opciones_admin/'+id;
+ new bootstrap.Modal(document.getElementById('opcionesModal')).show();
+}
+</script>
+<script>
+function guardarPreguntaAdmin(){
+ const categoria=(document.getElementById('categoria')?.value||'').trim();
+ const variable=(document.getElementById('variable')?.value||'').trim();
+ const tipo=(document.getElementById('tipo')?.value||'').trim();
+ const operacion=(document.getElementById('operacion')?.value||'').trim();
+ const factor=(document.getElementById('factor')?.value||'').trim();
+ if(!categoria){alert('Debe diligenciar el campo Categoría.');document.getElementById('categoria')?.focus();return;}
+ if(!variable){alert('Debe diligenciar el campo Pregunta.');document.getElementById('variable')?.focus();return;}
+ if(!tipo){alert('Debe seleccionar el Tipo.');document.getElementById('tipo')?.focus();return;}
+ if(!operacion){alert('Debe seleccionar la Operación.');document.getElementById('operacion')?.focus();return;}
+ if(factor===''){alert('Debe diligenciar el Factor.');document.getElementById('factor')?.focus();return;}
+ const fd=new FormData();
+ fd.append('id',document.getElementById('id')?.value||'');
+ fd.append('categoria',document.getElementById('categoria')?.value||'');
+ fd.append('variable',document.getElementById('variable')?.value||'');
+ fd.append('tipo',document.getElementById('tipo')?.value||'LISTA');
+ fd.append('operacion',document.getElementById('operacion')?.value||'FIJO');
+ fd.append('factor',document.getElementById('factor')?.value||0);
+ fd.append('formulario_id',document.getElementById('frmPreguntas')?.value||'');
+ fetch('/pregunta_editar',{
+   method:'POST',
+   headers:{'X-Requested-With':'XMLHttpRequest'},
+   body:fd
+ }).then(r=>r.json())
+   .then(x=>{
+      alert(x.mensaje||'Pregunta guardada');
+      document.getElementById('id').value='';
+      cargarPreguntasFormulario();
+   })
+   .catch(e=>alert('Error guardando la pregunta'));
+}
+</script>
+<script>
+function cargarPreguntasFormulario(){
+ let id=document.getElementById('frmPreguntas').value;
+ if(!id){document.getElementById('preguntasBody').innerHTML='';return;}
+ fetch('/api/preguntas/'+id)
+ .then(r=>r.json())
+ .then(d=>{
+   let h='';
+   d.forEach(p=>{
+     h+=`<tr>
+       <td>${p.IdVariable||''}</td>
+       <td>${p.Categoria||''}</td>
+       <td>${p.Variable||''}</td>
+       <td>${p.Tipo||'LISTA'}</td>
+       <td>
+       <button class="btn btn-warning btn-sm" onclick="editarPreguntaAdmin('${p.IdVariable||""}','${p.Categoria||""}','${p.Variable||""}','${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}','${p.Factor||0}')">✏️</button>
+       <button class="btn btn-danger btn-sm" onclick="eliminarPreguntaAdmin(${p.IdVariable})">🗑️</button>
+       ${ (p.Tipo||'LISTA')==='NUMERO' ? '' : `<button class="btn btn-info btn-sm" onclick="configurarPreguntaAdmin(${p.IdVariable})">⚙️</button>` }
+       </td>
+       </tr>`;
+   });
+   document.getElementById('preguntasBody').innerHTML=h||'<tr><td colspan="4">Sin preguntas</td></tr>';
+ }).catch(e=>{
+   document.getElementById('preguntasBody').innerHTML='<tr><td colspan="4">Error cargando preguntas</td></tr>';
+ });
+}
+const oldCF=cargarFormularios;
+cargarFormularios=function(){
+ fetch('/api/formularios').then(r=>r.json()).then(d=>{
+  let h='',s='';
+  d.forEach(f=>{
+   let id=f.IdFormulario||0;
+   let nom=f.Nombre||'';
+   let des=f.Descripcion||'';
+   h+=`<tr>
+<td>${id}</td>
+<td>${nom}</td>
+<td>${des}</td>
+<td>
+<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">✏️</button>
+<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button>
+<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">⚙️</button>
+</td>
+</tr>`;
+   s+=`<option value="${id}">${nom}</option>`;
+  });
+  const body=document.getElementById('tblFormulariosBody');
+if(body){ body.innerHTML=h; }
+const tbl=document.querySelector('#tblFormularios tbody');
+if(tbl){ tbl.innerHTML=h; }
+  let cmb=document.getElementById('frmPreguntas');
+  if(cmb){
+ cmb.innerHTML=s;
+ if(cmb.options.length>0){
+   cmb.selectedIndex=0;
+   cargarPreguntasFormulario();
+ }
+ cmb.onchange=cargarPreguntasFormulario;
+}
+ });
+}
+</script>
+<script>window.addEventListener('load',function(){if(typeof cargarFormularios==='function'){cargarFormularios();}});</script>
+<script>
+function crearFormularioAdmin(){ return crearFormulario(); }
+function editarFormularioAdmin(id,nombre,descripcion){
+ const hid=document.getElementById('idFormulario');
+ if(hid) hid.value=id||'';
+ const n=document.getElementById('nombreFormulario');
+ const d=document.getElementById('descripcionFormulario');
+ if(n) n.value=nombre||'';
+ if(d) d.value=descripcion||'';
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+Chart.defaults.font.family='Segoe UI';
+Chart.defaults.plugins.legend.position='bottom';
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ if(window.Chart){
+   Chart.defaults.font.family='Segoe UI';
+   Chart.defaults.plugins.legend.position='bottom';
+ }
+});
+</script>
+
+
+
+<div class="modal fade" id="configFormularioModal" tabindex="-1">
+ <div class="modal-dialog modal-xl">
+  <div class="modal-content">
+   <div class="modal-header bg-light">
+    <h5 class="modal-title">⚙️ Configuración del Formulario: <span id="cfgNombreFormulario">Mesa de Ayuda</span></h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+   </div>
+   <div class="modal-body">
+    <input type="hidden" id="cfgFormularioId">
+    <div class="row mb-3">
+      <div class="col-md-5">
+        <label class="form-label"><b>Concepto</b></label>
+        <input type="text" id="cfgConcepto" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label"><b>Tipo</b></label><br>
+        <input type="radio" name="cfgTipo" value="PORCENTAJE" checked> Porcentaje
+        &nbsp;&nbsp;
+        <input type="radio" name="cfgTipo" value="VALOR_FIJO"> Valor Fijo
+      </div>
+      <div class="col-md-2">
+        <label class="form-label"><b>Valor</b></label>
+        <input type="number" id="cfgValor" class="form-control">
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="button" id="btnConcepto" class="btn btn-success w-100" onclick="guardarConceptoCSV()">➕ Agregar Concepto</button><input type="hidden" id="editIndex" value="-1"><input type="hidden" id="conceptoOriginal" value="">
+      </div>
+    </div>
+    <table class="table table-bordered table-hover">
+      <thead class="table-light">
+       <tr><th>Concepto</th><th>Tipo</th><th>Valor</th><th>Estado</th><th>Acción</th></tr>
+      </thead>
+      <tbody id="tablaConceptos">
+       
+       
+       
+      </tbody>
+    </table>
+   </div>
+   <div class="modal-footer">
+    
+    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+   </div>
+  </div>
+ </div>
+</div>
+<script>
+function eliminarFila(btn){
+ if(confirm('¿Eliminar concepto?')){
+   const tr=btn.closest('tr');
+const idx=[...tr.parentNode.children].indexOf(tr);
+const fid=document.getElementById('cfgFormularioId').value;
+let data=[];
+data.splice(idx,1);
+
+tr.remove();
+alert('✅ Concepto eliminado correctamente');
+ }
+}
+function editarFila(btn){
+ const tr=btn.closest('tr');
+ document.getElementById('cfgConcepto').value=tr.cells[0].innerText;
+ document.getElementById('cfgValor').value=tr.cells[2].innerText;
+ document.getElementById('editIndex').value=[...tr.parentNode.children].indexOf(tr);
+ document.getElementById('btnConcepto').innerHTML='💾 Actualizar Concepto';
+}
+function agregarConceptoTmp(){
+ let c=document.getElementById('cfgConcepto').value;
+ let v=document.getElementById('cfgValor').value;
+ let t=document.querySelector('input[name="cfgTipo"]:checked').value=="PORCENTAJE"?"%":"Valor Fijo";
+ if(!c||!v){alert("Ingrese concepto y valor");return;}
+ let idx=document.getElementById('editIndex').value;
+ if(idx!='-1'){
+   let tr=document.getElementById('tablaConceptos').rows[idx];
+   tr.cells[0].innerText=c;
+   tr.cells[1].innerText=t;
+   tr.cells[2].innerText=v;
+   document.getElementById('editIndex').value='-1';
+   document.getElementById('btnConcepto').innerHTML='➕ Agregar Concepto';
+const fid=document.getElementById('cfgFormularioId').value;
+let data=[];
+data[idx]={concepto:c,tipo:t,valor:v,estado:'Activo'};
+
+alert('✅ Cambios guardados correctamente');
+ } else {
+ const fid=document.getElementById('cfgFormularioId').value;
+let data=[];
+data.push({concepto:c,tipo:t,valor:v,estado:'Activo'});
+
+document.getElementById('tablaConceptos').insertAdjacentHTML('beforeend',
+ `<tr><td>${c}</td><td>${t}</td><td>${v}</td><td>Activo</td><td><button class='btn btn-warning btn-sm' onclick='editarFila(this)'>✏️</button> <button class='btn btn-danger btn-sm' onclick='eliminarFila(this)'>🗑️</button></td></tr>`);
+ }
+ document.getElementById('cfgConcepto').value='';
+ document.getElementById('cfgValor').value='';
+}
+</script>
+
 </body></html>
+<!-- V91 mensaje guardado -->
+
+<script>
+function editarConceptoTmp(c,t,v){
+ const cc=document.getElementById('cfgConcepto');
+ const cv=document.getElementById('cfgValor');
+ const co=document.getElementById('conceptoOriginal');
+ if(cc) cc.value=c;
+ if(cv) cv.value=v;
+ if(co) co.value=c;
+const b=document.getElementById('btnConcepto');
+if(b){ b.innerHTML='💾 Actualizar Concepto'; }
+}
+function eliminarConceptoTmp(btn){
+ if(confirm('¿Eliminar concepto?')){
+   btn.closest('tr').remove();
+   alert('Concepto eliminado de la vista. Falta persistencia en CSV.');
+ }
+}
+</script>
+
+<script>
+async function eliminarConcepto(nombre){
+ try{
+   const fid=document.getElementById('cfgFormularioId').value;
+   const resp = await fetch('/api/conceptos/eliminar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id_formulario:fid,concepto:nombre})
+   });
+   if(!resp.ok){ const j=await resp.json().catch(()=>({})); alert(j.error||'Error'); return;} if(typeof renderConceptos==='function'){renderConceptos();}
+   alert('Concepto eliminado');
+ }catch(e){alert('Error eliminando: '+e);}
+}
+async function guardarConceptoCSV(){
+ try{
+   const fid=document.getElementById('cfgFormularioId').value;
+   const resp=await fetch('/api/conceptos/guardar',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        id_formulario:fid,
+        concepto:document.getElementById('cfgConcepto').value,
+        tipo:(document.querySelector('input[name="cfgTipo"]:checked')||{}).value||'PORCENTAJE',
+        valor:document.getElementById('cfgValor').value,
+        concepto_original:document.getElementById('conceptoOriginal')?document.getElementById('conceptoOriginal').value:'', activo:1
+      })
+   });
+   if(typeof renderConceptos==='function'){renderConceptos();}
+   
+const co=document.getElementById('conceptoOriginal');
+if(co && document.getElementById('cfgConcepto').value===co.value){
+  co.value='';
+}
+alert('Configuración guardada');
+ }catch(e){alert('Error guardando: '+e);}
+}
+</script>

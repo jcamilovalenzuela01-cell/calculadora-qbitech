@@ -1,3 +1,4 @@
+<!-- V63 chart patch applied -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -255,6 +256,14 @@ img{max-width:100%;height:auto;}
 </head>
 
 <body>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ if(location.pathname==='/home'){
+   document.getElementById('bienvenidaHome').style.display='block';
+ }
+});
+</script>
+
 
 <div class="container-fluid">
 
@@ -431,6 +440,7 @@ function payload(){
     });
 
     return {
+        formulario_id: {{ formulario_actual|default(0) }},
         respuestas:r
     };
 }
@@ -457,7 +467,14 @@ function calcular(){
             '$ ' +
             Number(d.total).toLocaleString('es-CO');
 
-        total.innerText = ktotal.innerText;
+        
+
+ktotal.innerText =
+    '$ ' +
+    Number(d.total).toLocaleString('es-CO');
+total.innerText = ktotal.innerText;
+
+
 
         
         if(d.categorias){
@@ -476,7 +493,11 @@ function calcular(){
     });
 }
 
+function formularioTieneDatos(){let tieneDatos=false;document.querySelectorAll('input,select,textarea').forEach(c=>{if(c.type==='hidden') return;const valor=(c.value||'').toString().trim();if(valor!=='') tieneDatos=true;});return tieneDatos;}
+
 function guardar(){
+
+    if(!formularioTieneDatos()){ alert('Debe diligenciar al menos un campo antes de guardar la cotización.'); return; }
 
     calcular();
 
@@ -500,6 +521,8 @@ function guardar(){
 }
 
 function generarPDF(){
+
+    if(!formularioTieneDatos()){ alert('Debe diligenciar al menos un campo antes de generar la cotización.'); return; }
 
     fetch('/generar_pdf',{
 
@@ -584,9 +607,21 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 
+
 </body>
 </html>
 <style>
 #graficaCategorias{max-height:110px!important;height:110px!important;}
 .card:has(#graficaCategorias), .grafica-card{overflow:hidden!important;}
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+ if(location.pathname==='/home'){
+   const centro=document.querySelector('.col-md-7');
+   if(centro){
+      centro.innerHTML='<div class="alert alert-info text-center p-5"><h2>👋 Bienvenido a QBITECH</h2><p>Seleccione un formulario del menú lateral para iniciar una cotización.</p></div>';
+   }
+ }
+});
+</script>

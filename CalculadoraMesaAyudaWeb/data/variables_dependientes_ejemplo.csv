@@ -1,0 +1,8 @@
+IdVariable,IdFormulario,Categoria,Variable,Tipo,Padre,ValorPadre
+100,3,Recurso,Especialidad,LISTA,,
+101,3,Recurso,Nivel DBA,LISTA,100,DBA
+102,3,Recurso,Nivel SO,LISTA,100,SO
+103,3,Recurso,Nivel RED,LISTA,100,RED
+104,3,Recurso,Tipo Ocupacion,LISTA,101,*
+105,3,Recurso,Porcentaje Ocupacion,NUMERO,104,Porcentaje
+106,3,Recurso,Horas Requeridas,NUMERO,104,Hora

@@ -41,6 +41,4 @@ IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado
 40,1,Contractuales,Costo Administrativo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
 41,1,Contractuales,Costo Financiera de la Cartera,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo
 42,1,prueba,prueba,NUMERO,FIJO,,Activo
-43,2,Cobertura,Recurso,LISTA,,,
-44,2,Cobertura,Disponibilidad,LISTA,,,
-45,3,prueba,prueba,LISTA,FIJO,,Activo
+45,1,prueba,prueba,LISTA,FIJO,0.0,Activo

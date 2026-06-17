@@ -1,6 +1,4 @@
-Flask
+flask
 pandas
 openpyxl
 reportlab
-gunicorn
-numpy

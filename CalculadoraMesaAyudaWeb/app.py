@@ -1,3 +1,24 @@
+# V54 DASHBOARD DEFAULT REDIRECT
+
+# ===== V51 DASHBOARD ADMINISTRATIVO =====
+# Ajuste propuesto:
+# 1. Cuando request.args.get('vista','') == '' mostrar dashboard.
+# 2. Calcular:
+#    total_usuarios     = len(pd.read_csv('data/usuarios.csv'))
+#    total_formularios  = len(pd.read_csv('data/formularios.csv'))
+#    total_cotizaciones = len(pd.read_csv('data/cotizaciones.csv')) if existe.
+# 3. Enviar al template:
+#    dashboard={
+#       'usuarios':total_usuarios,
+#       'formularios':total_formularios,
+#       'cotizaciones':total_cotizaciones
+#    }
+# 4. En cuestionario_admin.html agregar un bloque inicial:
+#    {% if not request.args.get('vista') %}
+#      tarjetas KPI + 3 canvas Chart.js
+#    {% endif %}
+# =======================================
+
 
 from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 import pandas as pd, os
@@ -24,8 +45,8 @@ def login():
             except:
                 pass
             return redirect('/home')
-        return render_template('login.html',error='Credenciales inválidas')
-    return render_template('login.html')
+
+    return render_template('login.html', error=None)
 
 @app.route('/logout')
 def logout():
@@ -65,6 +86,8 @@ def home():
         tipo=str(v.get('Tipo','LISTA')).upper()
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
         preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
+        # V135 dependency metadata
+        
     from collections import defaultdict
     categorias=defaultdict(list)
     for p in preguntas:
@@ -108,7 +131,7 @@ def administracion():
 @app.route('/cuestionario_admin',methods=['GET','POST'])
 def cuestionario_admin():
     formulario_id=request.args.get('formulario','')
-    vista=request.args.get('vista','')
+    vista=request.args.get('vista','dashboard')
 
     
     f='data/variables.csv'
@@ -132,7 +155,7 @@ def cuestionario_admin():
                 op.to_csv(opf,index=False)
         except Exception:
             pass
-        return redirect(f'/cuestionario_admin?admin=1&formulario={request.form.get("formulario_id","")}')
+        return redirect('/cuestionario_admin?admin=1&vista=dashboard')
     rows=''
     for _,r in df.iterrows():
         tipo=r.get('Tipo','LISTA'); icon='' if str(tipo).upper()=='NUMERO' else f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-id='{r["IdVariable"]}' data-bs-toggle='modal' data-bs-target='#opcionesModal'>⚙️</button>"; rows += f"<tr><td>{r['IdVariable']}</td><td>{r['Categoria']}</td><td>{r['Variable']}</td><td>{r.get('Tipo','')}</td><td><button class='btn btn-warning btn-sm' onclick=\"editar({r['IdVariable']},'{r['Categoria']}','{r['Variable']}','{r.get('Tipo','LISTA')}','{r.get('Operacion','FIJO')}','{r.get('Factor',0)}')\">✏️</button> <a class='btn btn-danger btn-sm' href='/pregunta_eliminar/{r['IdVariable']}'>🗑️</a> {icon}</td></tr>"
@@ -165,7 +188,33 @@ def cuestionario_admin():
             tabla_cotizaciones=cot.to_html(index=False,classes='table table-striped table-hover',border=0)
         except:
             tabla_cotizaciones='<div class="alert alert-info">No existen cotizaciones registradas.</div>'
-    return render_template('cuestionario_admin.html',tabla=tabla,tabla_cotizaciones=tabla_cotizaciones,formulario_id=formulario_id, formularios=formularios, usuarios=usuarios)
+    def contar_csv(path, **kwargs):
+        try:
+            if os.path.exists(path):
+                return len(pd.read_csv(path, **kwargs))
+        except Exception:
+            return 0
+        return 0
+
+    dashboard={
+        'usuarios': contar_csv('data/usuarios.csv'),
+        'formularios': contar_csv('data/formularios.csv'),
+        'cotizaciones': contar_csv(
+            'data/cotizaciones.csv',
+            engine='python',
+            on_bad_lines='skip'
+        )
+    }
+    return render_template(
+        'cuestionario_admin.html',
+        vista=vista,
+        dashboard=dashboard,
+        tabla=tabla,
+        tabla_cotizaciones=tabla_cotizaciones,
+        formulario_id=formulario_id,
+        formularios=formularios,
+        usuarios=usuarios
+    )
 
 
 
@@ -180,7 +229,7 @@ def pregunta_eliminar(pid):
         op=op[op['IdVariable']!=pid]
         op.to_csv('data/opciones.csv',index=False)
     except: pass
-    return redirect(f'/cuestionario_admin?admin=1&formulario={request.form.get("formulario_id","")}')
+    return redirect('/cuestionario_admin?admin=1&vista=dashboard')
 
 
 
@@ -226,6 +275,7 @@ input{{border-radius:8px!important}}
 def calcular():
     data=request.json or {}
     respuestas=data.get('respuestas',{})
+    formulario_id=data.get('formulario_id',0)
     total_opciones=0; total_numericos=0; detalle=[]; items=[]; categorias={}
     opciones=pd.read_csv('data/opciones.csv')
     uid=session.get('idusuario',0)
@@ -255,7 +305,27 @@ def calcular():
             m=opciones[(opciones['IdVariable']==int(vid)) & (opciones['Opcion'].astype(str)==resp)]
             if not m.empty:
                 val=float(m.iloc[0].get('Valor',0)); total_opciones+=val; detalle.append(f"{nombre}: ${val:,.0f}"); items.append({'pregunta':nombre,'respuesta':resp,'valor':val}); categorias[str(v.get('Categoria','General'))]=categorias.get(str(v.get('Categoria','General')),0)+val
-    total=total_numericos+total_opciones
+    total=0
+    try:
+        cfg=pd.read_csv('data/configuracion_formularios.csv')
+        cfg=cfg[cfg['id_formulario'].astype(str)==str(formulario_id)]
+    except Exception:
+        cfg=pd.DataFrame()
+
+    for item in items:
+        valor_real=float(item.get('valor',0))
+        valor_calculado=valor_real
+
+        for _,c in cfg.iterrows():
+            if int(c.get('activo',1))!=1:
+                continue
+            if str(c.get('tipo','')).upper().startswith('POR'):
+                valor_calculado += valor_real * (float(c.get('valor',0))/100)
+            else:
+                valor_calculado += float(c.get('valor',0))
+
+        item['valor_calculado']=round(valor_calculado,2)
+        total += valor_calculado
     return jsonify({'total_numericos':total_numericos,'total_opciones':total_opciones,'total':total,'detalle':'<br>'.join(detalle),'items':items,'categorias':categorias})
 
 @app.route('/guardar_cotizacion', methods=['POST'])
@@ -289,9 +359,10 @@ def generar_pdf():
         elems.append(Spacer(1,12))
         for item in items:
             pregunta=str(item.get('pregunta',''))
-            respuesta=str(item.get('respuesta',''))
-            valor=float(item.get('valor',0) or 0)
-            elems.append(Paragraph(f"{pregunta}: {respuesta} - ${valor:,.0f}",st['Normal']))
+            valor=float(item.get('valor_calculado', item.get('valor',0)) or 0)
+            if valor <= 0:
+                continue
+            elems.append(Paragraph(f"{pregunta}: ${valor:,.0f}",st['Normal']))
     else:
         detalle=str(d.get('detalle',''))
         for linea in detalle.replace('<br>','\n').split('\n'):
@@ -326,7 +397,9 @@ def pregunta_editar():
         nid=(df['IdVariable'].max()+1) if len(df)>0 else 1
         df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':request.form.get('factor',0),'Estado':'Activo'}
     df.to_csv('data/variables.csv',index=False)
-    return redirect(f'/cuestionario_admin?admin=1&formulario={request.form.get("formulario_id","")}')
+    if request.headers.get('X-Requested-With')=='XMLHttpRequest':
+        return jsonify({'ok':True,'mensaje':'Pregunta guardada correctamente'})
+    return redirect('/cuestionario_admin?admin=1&vista=dashboard')
 
 
 from flask import render_template_string
@@ -340,7 +413,7 @@ def admin_login():
         df.columns=df.columns.str.strip().str.lower()
         ok=df[(df['usuario'].astype(str)==u) & (df['clave'].astype(str)==c)]
         if not ok.empty:
-            return redirect(f'/cuestionario_admin?admin=1&formulario={request.form.get("formulario_id","")}')
+            return redirect('/cuestionario_admin?admin=1&vista=dashboard')
         return render_template('admin_login.html', error='Usuario o contraseña incorrectos')
     return render_template('admin_login.html')
 
@@ -422,6 +495,8 @@ def formulario(id_formulario):
         tipo=str(v.get('Tipo','LISTA')).upper()
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
         preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
+        # V135 dependency metadata
+        
     from collections import defaultdict
     categorias=defaultdict(list)
     for p in preguntas:
@@ -470,6 +545,17 @@ from flask import jsonify
 def api_formularios():
     import pandas as pd
     return jsonify(pd.read_csv('data/formularios.csv').fillna('').to_dict('records'))
+
+
+
+@app.route('/api/formularios/<int:formulario_id>')
+def api_formulario(formulario_id):
+    import pandas as pd
+    df=pd.read_csv('data/formularios.csv').fillna('')
+    if 'IdFormulario' in df.columns:
+        df=df[df['IdFormulario'].astype(str)==str(formulario_id)]
+    return jsonify(df.to_dict('records'))
+
 
 @app.route('/formulario_crear',methods=['POST'])
 def formulario_crear_ajax():
@@ -604,7 +690,89 @@ def usuario_formularios_guardar():
     return jsonify({'ok':True})
 
 
+@app.route('/api/preguntas/<int:formulario_id>')
+def api_preguntas(formulario_id):
+    import pandas as pd
+    df = pd.read_csv('data/variables.csv').fillna('')
+
+    if 'IdFormulario' in df.columns:
+        df['IdFormulario'] = pd.to_numeric(
+            df['IdFormulario'],
+            errors='coerce'
+        ).fillna(0).astype(int)
+        df = df[df['IdFormulario'] == int(formulario_id)]
+
+    columnas = [
+        'IdVariable',
+        'Categoria',
+        'Variable',
+        'Tipo',
+        'Operacion',
+        'Factor'
+    ]
+
+    for c in columnas:
+        if c not in df.columns:
+            df[c] = ''
+
+    return jsonify(
+        df[columnas].fillna('').to_dict(orient='records')
+    )
+
+
+@app.route('/api/conceptos/<int:fid>')
+def api_conceptos(fid):
+    import pandas as pd
+    try:
+        df=pd.read_csv('data/configuracion_formularios.csv')
+        df=df[df['id_formulario'].astype(str)==str(fid)]
+        return jsonify(df.to_dict(orient='records'))
+    except Exception:
+        return jsonify([])
+
+
+@app.route('/api/conceptos/eliminar', methods=['POST'])
+def api_conceptos_eliminar():
+    import pandas as pd
+    data=request.get_json()
+    fid=data.get('id_formulario')
+    concepto=data.get('concepto')
+    df=pd.read_csv('data/configuracion_formularios.csv')
+    df=df[~((df['id_formulario'].astype(str)==str(fid)) & (df['concepto'].astype(str)==str(concepto)))]
+    df.to_csv('data/configuracion_formularios.csv',index=False)
+    return jsonify({'ok':True})
+
+@app.route('/api/conceptos/guardar', methods=['POST'])
+def api_conceptos_guardar():
+    import pandas as pd
+    data=request.get_json()
+    df=pd.read_csv('data/configuracion_formularios.csv')
+    fid=str(data.get('id_formulario'))
+    concepto=str(data.get('concepto','')).strip()
+    original=str(data.get('concepto_original','')).strip()
+    valor=int(float(data.get('valor',0)))
+
+    if original:
+        mask=(df['id_formulario'].astype(str)==fid) & (df['concepto'].astype(str).str.strip()==original)
+        if mask.any():
+            df.loc[mask,'concepto']=concepto
+            df.loc[mask,'tipo']=data.get('tipo')
+            df.loc[mask,'valor']=valor
+            df.loc[mask,'activo']=int(data.get('activo',1))
+            df.to_csv('data/configuracion_formularios.csv',index=False)
+            return jsonify({'ok':True,'accion':'actualizado'})
+
+    dup=(df['id_formulario'].astype(str)==fid) & (df['concepto'].astype(str).str.strip().str.upper()==concepto.upper())
+    if dup.any():
+        return jsonify({'ok':False,'error':'Concepto ya existe'}),409
+
+    df.loc[len(df)]=[int(fid),concepto,data.get('tipo'),valor,int(data.get('activo',1))]
+    df.to_csv('data/configuracion_formularios.csv',index=False)
+    return jsonify({'ok':True,'accion':'insertado'})
+
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=5000,debug=True)
+
+
 
 

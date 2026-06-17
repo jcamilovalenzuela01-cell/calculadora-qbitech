@@ -1,0 +1,9 @@
+Pregunta,Opcion
+Especialidad Monitoreo,DBA
+Especialidad Monitoreo,SO
+Especialidad Monitoreo,RED
+Nivel DBA,Nivel 1|3000000
+Nivel DBA,Nivel 2|5000000
+Nivel DBA,Nivel 3|7000000
+Tipo Ocupacion,Porcentaje
+Tipo Ocupacion,Hora
