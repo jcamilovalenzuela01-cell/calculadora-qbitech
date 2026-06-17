@@ -44,6 +44,10 @@ def login():
                 session['idusuario']=int(ok.iloc[0]['idusuario']) if 'idusuario' in ok.columns else int(ok.iloc[0]['IdUsuario'])
             except:
                 pass
+            try:
+                session['rol']=str(ok.iloc[0].get('rol', ok.iloc[0].get('Rol','')))
+            except:
+                session['rol']=''
             return redirect('/home')
 
     return render_template('login.html', error=None)
@@ -55,6 +59,9 @@ def logout():
 
 def auth():
     return 'usuario' in session
+
+def es_admin():
+    return str(session.get('rol','')).strip().lower()=='administrador'
 
 @app.route('/')
 def index():
@@ -125,11 +132,21 @@ def cotizaciones():
 
 @app.route('/administracion')
 def administracion():
+    
+    if not auth():
+        return redirect('/login')
+    if not es_admin():
+        return 'Acceso denegado. Solo Administradores.',403
     if not auth(): return redirect('/login')
     return pd.read_csv('data/usuarios.csv').to_html(index=False)
 
 @app.route('/cuestionario_admin',methods=['GET','POST'])
 def cuestionario_admin():
+    
+    if not auth():
+        return redirect('/login')
+    if not es_admin():
+        return 'Acceso denegado. Solo Administradores.',403
     formulario_id=request.args.get('formulario','')
     vista=request.args.get('vista','dashboard')
 
@@ -155,7 +172,6 @@ def cuestionario_admin():
                 op.to_csv(opf,index=False)
         except Exception:
             pass
-        return redirect('/cuestionario_admin?admin=1&vista=dashboard')
     rows=''
     for _,r in df.iterrows():
         tipo=r.get('Tipo','LISTA'); icon='' if str(tipo).upper()=='NUMERO' else f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-id='{r["IdVariable"]}' data-bs-toggle='modal' data-bs-target='#opcionesModal'>⚙️</button>"; rows += f"<tr><td>{r['IdVariable']}</td><td>{r['Categoria']}</td><td>{r['Variable']}</td><td>{r.get('Tipo','')}</td><td><button class='btn btn-warning btn-sm' onclick=\"editar({r['IdVariable']},'{r['Categoria']}','{r['Variable']}','{r.get('Tipo','LISTA')}','{r.get('Operacion','FIJO')}','{r.get('Factor',0)}')\">✏️</button> <a class='btn btn-danger btn-sm' href='/pregunta_eliminar/{r['IdVariable']}'>🗑️</a> {icon}</td></tr>"
@@ -229,7 +245,6 @@ def pregunta_eliminar(pid):
         op=op[op['IdVariable']!=pid]
         op.to_csv('data/opciones.csv',index=False)
     except: pass
-    return redirect('/cuestionario_admin?admin=1&vista=dashboard')
 
 
 
@@ -399,7 +414,6 @@ def pregunta_editar():
     df.to_csv('data/variables.csv',index=False)
     if request.headers.get('X-Requested-With')=='XMLHttpRequest':
         return jsonify({'ok':True,'mensaje':'Pregunta guardada correctamente'})
-    return redirect('/cuestionario_admin?admin=1&vista=dashboard')
 
 
 from flask import render_template_string
@@ -413,7 +427,11 @@ def admin_login():
         df.columns=df.columns.str.strip().str.lower()
         ok=df[(df['usuario'].astype(str)==u) & (df['clave'].astype(str)==c)]
         if not ok.empty:
-            return redirect('/cuestionario_admin?admin=1&vista=dashboard')
+            session['usuario']=u
+            session['rol']=str(ok.iloc[0].get('rol', ok.iloc[0].get('Rol','')))
+            if str(session.get('rol','')).strip().lower()!='administrador':
+                return render_template('admin_login.html', error='Acceso permitido únicamente para Administradores')
+            return redirect('/cuestionario_admin?vista=dashboard')
         return render_template('admin_login.html', error='Usuario o contraseña incorrectos')
     return render_template('admin_login.html')
 
@@ -772,7 +790,5 @@ def api_conceptos_guardar():
 
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=5000,debug=True)
-
-
 
 
