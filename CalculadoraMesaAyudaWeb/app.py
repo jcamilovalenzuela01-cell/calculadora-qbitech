@@ -372,12 +372,21 @@ def generar_pdf():
     if items:
         elems.append(Paragraph('DETALLE DE LA COTIZACION',st['Heading2']))
         elems.append(Spacer(1,12))
+        categorias={}
         for item in items:
-            pregunta=str(item.get('pregunta',''))
-            valor=float(item.get('valor_calculado', item.get('valor',0)) or 0)
-            if valor <= 0:
+            respuesta=str(item.get('respuesta','')).strip()
+            if respuesta in ('','0','None','null'):
                 continue
-            elems.append(Paragraph(f"{pregunta}: ${valor:,.0f}",st['Normal']))
+            cat=str(item.get('categoria','GENERAL'))
+            categorias.setdefault(cat,[]).append(item)
+
+        for cat,lista in categorias.items():
+            elems.append(Paragraph(cat.upper(),st['Heading2']))
+            for item in lista:
+                pregunta=str(item.get('pregunta',''))
+                respuesta=str(item.get('respuesta',''))
+                elems.append(Paragraph(f"{pregunta}: {respuesta}",st['Normal']))
+            elems.append(Spacer(1,8))
     else:
         detalle=str(d.get('detalle',''))
         for linea in detalle.replace('<br>','\n').split('\n'):
