@@ -1,0 +1,7 @@
+Operacion,Titulo,Descripcion,Formula,UsaRangos,UsaParametros,UsaConfiguracion,UsaOperandos
+FIJO,Calculo fijo por pregunta,"Toma el valor de una pregunta origen o un valor constante parametrizado.","Total = valor de la pregunta origen. Si no hay pregunta origen usa el valor constante.",0,0,1,1
+SUMAR,Calculo por suma,"Suma una o varias preguntas origen y permite agregar un ajuste fijo opcional.","Total = pregunta 1 + pregunta 2 + ... + ajuste fijo.",0,0,1,1
+MULTIPLICAR,Calculo por multiplicacion,"Multiplica una o varias preguntas origen y permite aplicar un factor opcional.","Total = pregunta 1 x pregunta 2 x ... x factor.",0,0,1,1
+PORCENTAJE,Calculo por porcentaje,"Calcula un porcentaje sobre una o varias preguntas base; el porcentaje puede venir de otra pregunta o de la configuracion.","Total = suma de bases x porcentaje / 100.",0,0,1,1
+RANGO_TICKETS,Calculo por rangos de tickets,"Suma cantidades parametrizadas, busca el rango aplicable y usa el valor base del rango.","Total = tickets cotizados x valor unitario del rango, con ajustes parametrizados segun preguntas asociadas.",1,1,0,0
+SERVICIOS_EXCEL,Calculo de servicios por perfil,"Calcula el valor de uno o varios servicios usando producto, perfil, porcentaje y disponibilidad opcional, siguiendo la logica de la hoja calculadora del Excel.","Total servicio = valor del perfil x porcentaje / 100. Si disponibilidad esta activa, suma recargo de disponibilidad.",0,1,1,0

@@ -3,6 +3,7 @@
 <body class='container mt-4'>
 <h2>📋 Administración de Formularios</h2>
 <form method='post' action='/guardar_formulario' class='row g-2 mb-4'>
+<input type='hidden' name='_csrf_token' value='{{ csrf_token() }}'>
 <div class='col'><input class='form-control' name='nombre' placeholder='Nombre Formulario'></div>
 <div class='col'><input class='form-control' name='descripcion' placeholder='Descripción'></div>
 <div class='col'><button class='btn btn-success'>➕ Crear Formulario</button></div>

@@ -1,5 +1,5 @@
-<!-- V63 chart patch applied -->
 <!doctype html><html><head><meta charset='utf-8'>
+<meta name='csrf-token' content='{{ csrf_token() }}'>
 <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 <style>
 #opcionesModal .modal-content{
@@ -38,27 +38,27 @@
 <div class='col-md-2 border-end'>
 <h5>Administración</h5>
 <div class='list-group'>
-<a href='/cuestionario_admin?admin=1&vista=dashboard' class='list-group-item list-group-item-action'>🏠 Inicio</a>
-<a href='/cuestionario_admin?admin=1&vista=formularios' class='list-group-item list-group-item-action'>📋 Formularios</a>
-<a href='?admin=1&vista=usuarios' class='list-group-item list-group-item-action'>👥 Usuarios</a>
-<a href='/cuestionario_admin?admin=1&vista=cotizaciones' class='list-group-item list-group-item-action'>📁 Cotizaciones</a>
-<a href='/logout' class='list-group-item list-group-item-action text-danger'>🚪 Cerrar Sesión</a>
+<a href='/cuestionario_admin?admin=1&vista=dashboard' class='list-group-item list-group-item-action'>Inicio</a>
+<a href='/cuestionario_admin?admin=1&vista=formularios' class='list-group-item list-group-item-action'>Formularios</a>
+<a href='?admin=1&vista=usuarios' class='list-group-item list-group-item-action'>Usuarios</a>
+<a href='/cuestionario_admin?admin=1&vista=cotizaciones' class='list-group-item list-group-item-action'>Cotizaciones</a>
+<form method='post' action='/logout'><input type='hidden' name='_csrf_token' value='{{ csrf_token() }}'><button class='list-group-item list-group-item-action text-danger' type='submit'>Cerrar Sesión</button></form>
 </div>
 </div>
 <div class='col-md-10'>
 
 
 {% if vista=='dashboard' %}
-<h2>📊 Dashboard Administrativo</h2>
+<h2>Dashboard Administrativo</h2>
 <div class="row mb-4">
-<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>👥 Usuarios</h5><h2>{{dashboard.usuarios}}</h2></div></div></div>
-<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>📋 Formularios</h5><h2>{{dashboard.formularios}}</h2></div></div></div>
-<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>📁 Cotizaciones</h5><h2>{{dashboard.cotizaciones}}</h2></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>Usuarios</h5><h2>{{dashboard.usuarios}}</h2></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>Formularios</h5><h2>{{dashboard.formularios}}</h2></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-body text-center"><h5>Cotizaciones</h5><h2>{{dashboard.cotizaciones}}</h2></div></div></div>
 </div>
 <div class="row mt-4">
-<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Usuarios</div><div class="card-body"><canvas id="chartUsuarios" class="dashboard-chart"></canvas></div></div></div>
-<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Formularios</div><div class="card-body"><canvas id="chartFormularios" class="dashboard-chart"></canvas></div></div></div>
-<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">📈 Gráfica Cotizaciones</div><div class="card-body"><canvas id="chartCotizaciones" class="dashboard-chart"></canvas></div></div></div>
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">Gráfica Usuarios</div><div class="card-body"><canvas id="chartUsuarios" class="dashboard-chart"></canvas></div></div></div>
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">Gráfica Formularios</div><div class="card-body"><canvas id="chartFormularios" class="dashboard-chart"></canvas></div></div></div>
+<div class="col-md-4"><div class="card shadow-sm chart-card"><div class="card-header text-center">Gráfica Cotizaciones</div><div class="card-body"><canvas id="chartCotizaciones" class="dashboard-chart"></canvas></div></div></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -75,16 +75,16 @@ document.addEventListener('DOMContentLoaded',function(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
   });
   new Chart(document.getElementById('chartCotizaciones'),{
-    type:'line',
-    data:{labels: {{ (dashboard.get('cotizaciones_labels',['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']))|tojson }},datasets:[{label:'Cotizaciones por mes',data: {{ (dashboard.get('cotizaciones_data',[0,0,0,0,0,0,0,0,0,0,0,0]))|tojson }},borderColor:'#6366F1',backgroundColor:'rgba(99,102,241,.15)',fill:true,tension:.35,pointRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+    type:'bar',
+    data:{labels: {{ (dashboard.get('cotizaciones_labels',['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']))|tojson }},datasets: {{ (dashboard.get('cotizaciones_datasets',[]))|tojson }}},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:function(ctx){return ctx.dataset.label+': '+ctx.parsed.y+' cotizaciones';}}}},scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{precision:0,stepSize:1}}}}
   });
  }
 });
 </script>
 <div class="alert alert-info">Seleccione una opción del menú lateral para administrar Formularios, Usuarios o Cotizaciones.</div>
 {% elif request.args.get('vista')=='cotizaciones' %}
-<h2>📁 Cotizaciones</h2>
+<h2>Cotizaciones</h2>
 {{tabla_cotizaciones|safe}}
 
 {% elif request.args.get('vista')=='usuarios' %}
@@ -103,9 +103,9 @@ document.addEventListener('DOMContentLoaded',function(){
 <tbody>
 {% for u in usuarios %}
 <tr><td>{{u.idusuario}}</td><td>{{u.usuario}}</td><td>{{u.nombre}}</td><td>{{u.rol}}</td><td>{{u.formularios_txt}}</td>
-<td><button type='button' class='btn btn-warning btn-sm' data-bs-toggle='modal' onclick="abrirEditar(this)" data-id='{{u.idusuario}}' data-usuario='{{u.usuario}}' data-clave='{{u.clave}}' data-nombre='{{u.nombre}}' data-rol='{{u.rol}}' data-bs-target='#editarUsuarioModal'>✏️</button>
-<button type='button' class='btn btn-secondary btn-sm' data-bs-toggle='modal' onclick="abrirConfig(this)" data-id='{{u.idusuario}}'>⚙️</button>
-<button type='button' class='btn btn-danger btn-sm' onclick='eliminarUsuario({{u.idusuario}})'>🗑️</button></td></tr>
+<td><button type='button' class='btn btn-warning btn-sm' data-bs-toggle='modal' onclick="abrirEditar(this)" data-id='{{u.idusuario}}' data-usuario='{{u.usuario}}' data-nombre='{{u.nombre}}' data-rol='{{u.rol}}' data-bs-target='#editarUsuarioModal'>Editar</button>
+<button type='button' class='btn btn-secondary btn-sm' data-bs-toggle='modal' onclick="abrirConfig(this)" data-id='{{u.idusuario}}'>Configurar</button>
+<button type='button' class='btn btn-danger btn-sm' onclick='eliminarUsuario({{u.idusuario}})'>Eliminar</button></td></tr>
 {% endfor %}
 </tbody></table>
 
@@ -159,7 +159,8 @@ document.addEventListener('DOMContentLoaded',function(){
 <div class="col-md-3"><input class="form-control" id="variable" placeholder="Pregunta"></div>
 <div class="col-md-2">
 <select class="form-control" id="tipo">
-<option value="LISTA">LISTA</option><option value="LISTA_DEPENDIENTE">LISTA DEPENDIENTE</option>
+<option value="LISTA">LISTA</option>
+<option value="CALCULADA">Calculada</option><option value="LISTA_DEPENDIENTE">LISTA DEPENDIENTE</option>
 <option value="NUMERO">NUMERO</option>
 </select>
 </div>
@@ -168,14 +169,23 @@ document.addEventListener('DOMContentLoaded',function(){
 <option value="FIJO">FIJO</option>
 <option value="SUMAR">SUMAR</option>
 <option value="MULTIPLICAR">MULTIPLICAR</option>
+<option value="RANGO_TICKETS">RANGO</option>
+<option value="PORCENTAJE">% PORCENTAJE</option>
+<option value="SERVICIOS_EXCEL">SERVICIOS EXCEL</option>
 </select>
 </div>
 <div class="col-md-1"><input class="form-control" id="factor" type="number" step="0.01" placeholder="Factor"></div>
+<div class="col-md-1">
+<select class="form-control" id="visible">
+<option value="1">Visible</option>
+<option value="0">Invisible</option>
+</select>
+</div>
 <div class="col-md-2"><button type="button" class="btn btn-primary" onclick="guardarPreguntaAdmin()">Guardar / Actualizar</button></div>
 </div>
 
 <table class="table">
-<thead><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Acciones</th></tr></thead>
+<thead><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Acciones</th></tr></thead>
 <tbody id="preguntasBody"></tbody>
 </table>
 </div>
@@ -195,28 +205,32 @@ setTimeout(()=>{ if(typeof cargarFormularios==='function') cargarFormularios();}
 </select>
 </div>
 <div class='col-md-8 d-flex align-items-end'>
-<a href='#' onclick='abrirModalFormularios();return false;' class='btn btn-success'>📋 Administración de Formularios</a>
+<a href='#' onclick='abrirModalFormularios();return false;' class='btn btn-success'>Administración de Formularios</a>
 </div></div>
 <form method='post' action='/pregunta_editar' class='row g-2'>
+<input type='hidden' name='_csrf_token' value='{{ csrf_token() }}'>
 <input type='hidden' name='formulario_id' id='formulario_id_hidden' value=''>
 <input type='hidden' name='id' id='id'>
 <div class='col-md-2'><input class='form-control' name='categoria' id='categoria' placeholder='Categoria'></div>
 <div class='col-md-3'><input class='form-control' name='variable' id='variable' placeholder='Pregunta'></div>
-<div class='col-md-2'><select class='form-control' id='tipo' name='tipo'><option value='LISTA'>LISTA</option><option value='NUMERO'>NUMERO</option></select></div>
-<div class='col-md-2'><select class='form-control' id='operacion' name='operacion'><option value='FIJO'>FIJO</option><option value='SUMAR'>SUMAR</option><option value='MULTIPLICAR'>MULTIPLICAR</option></select></div>
+<div class='col-md-2'><select class='form-control' id='tipo' name='tipo'><option value='LISTA'>LISTA</option>
+<option value="CALCULADA">Calculada</option><option value='NUMERO'>NUMERO</option></select></div>
+<div class='col-md-2'><select class='form-control' id='operacion' name='operacion'><option value='FIJO'>FIJO</option><option value='SUMAR'>SUMAR</option><option value='MULTIPLICAR'>MULTIPLICAR</option><option value='RANGO_TICKETS'>RANGO</option><option value='PORCENTAJE'>% PORCENTAJE</option><option value='SERVICIOS_EXCEL'>SERVICIOS EXCEL</option></select></div>
 <div class='col-md-1'><input class='form-control' id='factor' name='factor' type='number' step='0.01' placeholder='Factor'></div>
+<div class='col-md-1'><select class='form-control' id='visible' name='visible'><option value='1'>Visible</option><option value='0'>Invisible</option></select></div>
 <div class='col-md-2'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
 </form><hr>
 {{tabla|safe}}
 {% endif %}
 <script>
-function editar(id,c,v,t,o,f){
+function editar(id,c,v,t,o,f,visible){
 document.getElementById('id').value=id;
 document.getElementById('categoria').value=c;
 document.getElementById('variable').value=v;
 document.getElementById('tipo').value=t;
 document.getElementById('operacion').value=o;
 document.getElementById('factor').value=f;
+if(document.getElementById('visible'))document.getElementById('visible').value=String(String(visible)==='0' ? 0 : 1);
 window.scrollTo(0,0);
 }
 </script>
@@ -236,10 +250,28 @@ window.scrollTo(0,0);
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+const originalFetch=window.fetch.bind(window);
+window.fetch=(url,options={})=>{
+ const config={...options,headers:{...(options.headers||{})}};
+ if((config.method||'GET').toUpperCase()!=='GET'){
+  config.headers['X-CSRF-Token']=document.querySelector("meta[name='csrf-token']").content;
+ }
+ return originalFetch(url,config);
+};
 document.addEventListener('click',function(e){
  let b=e.target.closest('.btn-opciones');
  if(!b) return;
  e.preventDefault();
+ if(b.dataset.url){
+  document.getElementById('opcionesFrame').src=b.dataset.url;
+  const modal=new bootstrap.Modal(document.getElementById('opcionesModal'));
+  modal.show();
+  return;
+ }
+ if((b.dataset.tipo||'').toUpperCase()==='CALCULADA' && (b.dataset.operacion||'').toUpperCase()==='RANGO_TICKETS'){
+  configurarPreguntaAdmin(b.dataset.id,'CALCULADA','RANGO_TICKETS');
+  return;
+ }
  document.getElementById('opcionesFrame').src='/opciones_admin/'+b.dataset.id;
  const modal=new bootstrap.Modal(document.getElementById('opcionesModal'));
  modal.show();
@@ -292,23 +324,23 @@ document.addEventListener('DOMContentLoaded',function(){
 <div class="tab-pane fade show active" id="tabFormularios">
 <div class="mb-2"><input id="frm_nombre" class="form-control" placeholder="Nombre formulario"></div>
 <div class="mb-2"><textarea id="frm_desc" class="form-control" placeholder="Descripción"></textarea></div>
-<button type="button" class="btn btn-success" onclick="crearFormulario()">➕ Crear Formulario</button>
+<button type="button" class="btn btn-success" onclick="crearFormulario()">Crear Formulario</button>
 <hr>
 <table class="table table-bordered" id="tblFormularios">
 <thead><tr><th>ID</th><th>Formulario</th><th>Descripción</th><th>Acciones</th></tr></thead>
-<tbody></tbody>
+<tbody id="tblFormulariosModalBody"></tbody>
 </table>
 </div>
 <div class="tab-pane fade" id="tabPreguntas">
 <div class="mb-3">
 <label>Formulario</label>
-<select id="frmPreguntas" class="form-control" onchange="cargarPreguntasFormulario()"></select>
+<select id="frmPreguntasModal" class="form-control"></select>
 </div>
 <table class="table table-bordered">
 <thead><tr><th>ID</th><th>Categoría</th><th>Pregunta</th><th>Acciones</th></tr></thead>
-<tbody id="preguntasBody"></tbody>
+<tbody id="preguntasBodyModal"></tbody>
 </table>
-<button class="btn btn-primary">➕ Crear Pregunta</button>
+<button class="btn btn-primary">Crear Pregunta</button>
 </div>
 </div>
    </div></div></div></div>
@@ -326,9 +358,9 @@ function cargarFormularios(){
 <td>${nom}</td>
 <td>${des}</td>
 <td>
-<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">✏️</button>
-<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button>
-<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">⚙️</button>
+<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">Editar</button>
+<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">Eliminar</button>
+<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">Configurar</button>
 </td>
 </tr>`;
  });
@@ -346,7 +378,7 @@ async function renderConceptos(){
  const tb=document.getElementById('tablaConceptos');
  tb.innerHTML='';
  data.forEach(c=>{
- tb.insertAdjacentHTML('beforeend',`<tr><td>${c.concepto}</td><td>${c.tipo}</td><td>${c.valor}</td><td>${(c.activo==1?'Activo':'Inactivo')}</td><td><button class='btn btn-warning btn-sm' onclick="editarConceptoTmp('${c.concepto}','${c.tipo}','${c.valor}')">✏️</button> <button class='btn btn-danger btn-sm' onclick="eliminarConcepto(this.closest('tr').children[0].innerText)">🗑️</button></td></tr>`);
+ tb.insertAdjacentHTML('beforeend',`<tr><td>${c.concepto}</td><td>${c.tipo}</td><td>${c.valor}</td><td>${(c.activo==1?'Activo':'Inactivo')}</td><td><button class='btn btn-warning btn-sm' onclick="editarConceptoTmp('${c.concepto}','${c.tipo}','${c.valor}')">Editar</button> <button class='btn btn-danger btn-sm' onclick="eliminarConcepto(this.closest('tr').children[0].innerText)">Eliminar</button></td></tr>`);
  });
 }
 function abrirConfiguracionFormulario(id){
@@ -402,7 +434,7 @@ function eliminarFormulario(id){
 function abrirEditar(b){
 document.getElementById('eid').value=b.dataset.id||'';
 if(document.getElementById('eusuario')) document.getElementById('eusuario').value=b.dataset.usuario||'';
-if(document.getElementById('enombre')) var c=document.getElementById('eclave'); if(c) c.value=b.dataset.clave||'';
+if(document.getElementById('enombre')) var c=document.getElementById('eclave'); if(c) c.value='';
 document.getElementById('enombre').value=b.dataset.nombre||'';
 if(document.getElementById('erol')) document.getElementById('erol').value=b.dataset.rol||'';
 }
@@ -551,7 +583,7 @@ function mostrarMensaje(msg){
 
 <script>
 function eliminarUsuario(id){
- fetch('/usuario_eliminar/' + id)
+ fetch('/usuario_eliminar/' + id,{method:'POST'})
  .then(r=>r.json())
  .then(d=>{
    if(d.ok===false){
@@ -605,22 +637,37 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 <script>
-function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor){
+function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor,visible){
  document.getElementById('id').value=id;
  document.getElementById('categoria').value=categoria||'';
  document.getElementById('variable').value=variable||'';
  if(document.getElementById('tipo'))document.getElementById('tipo').value=tipo||'LISTA';
  if(document.getElementById('operacion'))document.getElementById('operacion').value=operacion||'FIJO';
  if(document.getElementById('factor'))document.getElementById('factor').value=factor||0;
+ if(document.getElementById('visible'))document.getElementById('visible').value=String(String(visible)==='0' ? 0 : 1);
+ actualizarFactorPorTipo();
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function eliminarPreguntaAdmin(id){
  if(!confirm('¿Eliminar la pregunta?')) return;
- fetch('/pregunta_eliminar/'+id).then(()=>cargarPreguntasFormulario());
+ fetch('/pregunta_eliminar/'+id,{method:'POST'}).then(()=>cargarPreguntasFormulario());
 }
-function configurarPreguntaAdmin(id){
- document.getElementById('opcionesFrame').src='/opciones_admin/'+id;
- new bootstrap.Modal(document.getElementById('opcionesModal')).show();
+function configurarPreguntaAdmin(id,tipo,operacion){
+
+ const modal=document.getElementById('opcionesModal');
+ window.rangoPreguntaId=id;
+ const tipoNormalizado=String(tipo||'').trim().toUpperCase();
+ const operacionNormalizada=String(operacion||'').trim().toUpperCase();
+
+ if(tipoNormalizado==='CALCULADA'){
+   modal.querySelector('.modal-title').innerHTML='Configurar Calculo';
+   modal.querySelector('.modal-body').innerHTML='<iframe id="opcionesFrame" style="width:100%;height:650px;border:0" src="/calculada_config_admin/'+id+'"></iframe>';
+ }else{
+   modal.querySelector('.modal-title').innerHTML='Administrar Opciones';
+   modal.querySelector('.modal-body').innerHTML='<iframe id="opcionesFrame" style="width:100%;height:650px;border:0" src="/opciones_admin/'+id+'"></iframe>';
+ }
+
+ new bootstrap.Modal(modal).show();
 }
 </script>
 <script>
@@ -634,14 +681,14 @@ function guardarPreguntaAdmin(){
  if(!variable){alert('Debe diligenciar el campo Pregunta.');document.getElementById('variable')?.focus();return;}
  if(!tipo){alert('Debe seleccionar el Tipo.');document.getElementById('tipo')?.focus();return;}
  if(!operacion){alert('Debe seleccionar la Operación.');document.getElementById('operacion')?.focus();return;}
- if(factor===''){alert('Debe diligenciar el Factor.');document.getElementById('factor')?.focus();return;}
  const fd=new FormData();
  fd.append('id',document.getElementById('id')?.value||'');
  fd.append('categoria',document.getElementById('categoria')?.value||'');
  fd.append('variable',document.getElementById('variable')?.value||'');
  fd.append('tipo',document.getElementById('tipo')?.value||'LISTA');
  fd.append('operacion',document.getElementById('operacion')?.value||'FIJO');
- fd.append('factor',document.getElementById('factor')?.value||0);
+ fd.append('factor',factor || 0);
+ fd.append('visible',document.getElementById('visible')?.value||1);
  fd.append('formulario_id',document.getElementById('frmPreguntas')?.value||'');
  fetch('/pregunta_editar',{
    method:'POST',
@@ -657,6 +704,23 @@ function guardarPreguntaAdmin(){
 }
 </script>
 <script>
+function actualizarFactorPorTipo(){
+ document.querySelectorAll('#tipo').forEach(tipo=>{
+   const contenedor=tipo.closest('form, .row, body');
+   const factor=contenedor ? contenedor.querySelector('#factor') : document.getElementById('factor');
+   if(!factor) return;
+   const esNumero=String(tipo.value||'').toUpperCase()==='NUMERO';
+   factor.disabled=!esNumero;
+   factor.placeholder=esNumero ? 'Factor' : 'Factor N/A';
+   if(!esNumero){ factor.value=0; }
+ });
+}
+document.addEventListener('DOMContentLoaded',actualizarFactorPorTipo);
+document.addEventListener('change',function(e){
+ if(e.target && e.target.id==='tipo'){ actualizarFactorPorTipo(); }
+});
+</script>
+<script>
 function cargarPreguntasFormulario(){
  let id=document.getElementById('frmPreguntas').value;
  if(!id){document.getElementById('preguntasBody').innerHTML='';return;}
@@ -670,16 +734,17 @@ function cargarPreguntasFormulario(){
        <td>${p.Categoria||''}</td>
        <td>${p.Variable||''}</td>
        <td>${p.Tipo||'LISTA'}</td>
+       <td>${String(p.Visible)==='0' ? 'Invisible' : 'Visible'}</td>
        <td>
-       <button class="btn btn-warning btn-sm" onclick="editarPreguntaAdmin('${p.IdVariable||""}','${p.Categoria||""}','${p.Variable||""}','${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}','${p.Factor||0}')">✏️</button>
-       <button class="btn btn-danger btn-sm" onclick="eliminarPreguntaAdmin(${p.IdVariable})">🗑️</button>
-       ${ (p.Tipo||'LISTA')==='NUMERO' ? '' : `<button class="btn btn-info btn-sm" onclick="configurarPreguntaAdmin(${p.IdVariable})">⚙️</button>` }
+       <button class="btn btn-warning btn-sm" onclick="editarPreguntaAdmin('${p.IdVariable||""}','${p.Categoria||""}','${p.Variable||""}','${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}','${p.Factor||0}','${p.Visible ?? 1}')">Editar</button>
+       <button class="btn btn-danger btn-sm" onclick="eliminarPreguntaAdmin(${p.IdVariable})">Eliminar</button>
+       ${ (p.Tipo||'LISTA')==='NUMERO' ? '' : `<button class="btn btn-info btn-sm" onclick="configurarPreguntaAdmin(${p.IdVariable},'${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}')">Configurar</button>` }
        </td>
        </tr>`;
    });
-   document.getElementById('preguntasBody').innerHTML=h||'<tr><td colspan="4">Sin preguntas</td></tr>';
+   document.getElementById('preguntasBody').innerHTML=h||'<tr><td colspan="6">Sin preguntas</td></tr>';
  }).catch(e=>{
-   document.getElementById('preguntasBody').innerHTML='<tr><td colspan="4">Error cargando preguntas</td></tr>';
+   document.getElementById('preguntasBody').innerHTML='<tr><td colspan="6">Error cargando preguntas</td></tr>';
  });
 }
 const oldCF=cargarFormularios;
@@ -695,9 +760,9 @@ cargarFormularios=function(){
 <td>${nom}</td>
 <td>${des}</td>
 <td>
-<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">✏️</button>
-<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">🗑️</button>
-<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">⚙️</button>
+<button class="btn btn-warning btn-sm" onclick="editarFormularioAdmin('${id}','${nom.replace(/'/g,'&#39;')}','${des.replace(/'/g,'&#39;')}')">Editar</button>
+<button class="btn btn-danger btn-sm" onclick="eliminarFormulario(${id})">Eliminar</button>
+<button class="btn btn-secondary btn-sm" title="Configurar Formulario" onclick="abrirConfiguracionFormulario(${id})">Configurar</button>
 </td>
 </tr>`;
    s+=`<option value="${id}">${nom}</option>`;
@@ -706,15 +771,19 @@ cargarFormularios=function(){
 if(body){ body.innerHTML=h; }
 const tbl=document.querySelector('#tblFormularios tbody');
 if(tbl){ tbl.innerHTML=h; }
-  let cmb=document.getElementById('frmPreguntas');
+  const cmb=document.querySelector('#tabp #frmPreguntas');
   if(cmb){
- cmb.innerHTML=s;
- if(cmb.options.length>0){
-   cmb.selectedIndex=0;
-   cargarPreguntasFormulario();
- }
- cmb.onchange=cargarPreguntasFormulario;
-}
+    cmb.innerHTML=s;
+    if(cmb.options.length>0 && !cmb.value){
+      cmb.selectedIndex=0;
+    }
+    cmb.onchange=cargarPreguntasFormulario;
+    cargarPreguntasFormulario();
+  }
+  const cmbModal=document.getElementById('frmPreguntasModal');
+  if(cmbModal){
+    cmbModal.innerHTML=s;
+  }
  });
 }
 </script>
@@ -754,7 +823,7 @@ document.addEventListener('DOMContentLoaded',function(){
  <div class="modal-dialog modal-xl">
   <div class="modal-content">
    <div class="modal-header bg-light">
-    <h5 class="modal-title">⚙️ Configuración del Formulario: <span id="cfgNombreFormulario">Mesa de Ayuda</span></h5>
+    <h5 class="modal-title">Configuración del Formulario: <span id="cfgNombreFormulario">Mesa de Ayuda</span></h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
    </div>
    <div class="modal-body">
@@ -775,7 +844,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <input type="number" id="cfgValor" class="form-control">
       </div>
       <div class="col-md-2 d-flex align-items-end">
-        <button type="button" id="btnConcepto" class="btn btn-success w-100" onclick="guardarConceptoCSV()">➕ Agregar Concepto</button><input type="hidden" id="editIndex" value="-1"><input type="hidden" id="conceptoOriginal" value="">
+        <button type="button" id="btnConcepto" class="btn btn-success w-100" onclick="guardarConceptoCSV()">Agregar Concepto</button><input type="hidden" id="editIndex" value="-1"><input type="hidden" id="conceptoOriginal" value="">
       </div>
     </div>
     <table class="table table-bordered table-hover">
@@ -806,7 +875,7 @@ let data=[];
 data.splice(idx,1);
 
 tr.remove();
-alert('✅ Concepto eliminado correctamente');
+alert('Concepto eliminado correctamente');
  }
 }
 function editarFila(btn){
@@ -814,7 +883,7 @@ function editarFila(btn){
  document.getElementById('cfgConcepto').value=tr.cells[0].innerText;
  document.getElementById('cfgValor').value=tr.cells[2].innerText;
  document.getElementById('editIndex').value=[...tr.parentNode.children].indexOf(tr);
- document.getElementById('btnConcepto').innerHTML='💾 Actualizar Concepto';
+ document.getElementById('btnConcepto').innerHTML='Actualizar Concepto';
 }
 function agregarConceptoTmp(){
  let c=document.getElementById('cfgConcepto').value;
@@ -828,27 +897,129 @@ function agregarConceptoTmp(){
    tr.cells[1].innerText=t;
    tr.cells[2].innerText=v;
    document.getElementById('editIndex').value='-1';
-   document.getElementById('btnConcepto').innerHTML='➕ Agregar Concepto';
+   document.getElementById('btnConcepto').innerHTML='Agregar Concepto';
 const fid=document.getElementById('cfgFormularioId').value;
 let data=[];
 data[idx]={concepto:c,tipo:t,valor:v,estado:'Activo'};
 
-alert('✅ Cambios guardados correctamente');
+alert('Cambios guardados correctamente');
  } else {
  const fid=document.getElementById('cfgFormularioId').value;
 let data=[];
 data.push({concepto:c,tipo:t,valor:v,estado:'Activo'});
 
 document.getElementById('tablaConceptos').insertAdjacentHTML('beforeend',
- `<tr><td>${c}</td><td>${t}</td><td>${v}</td><td>Activo</td><td><button class='btn btn-warning btn-sm' onclick='editarFila(this)'>✏️</button> <button class='btn btn-danger btn-sm' onclick='eliminarFila(this)'>🗑️</button></td></tr>`);
+ `<tr><td>${c}</td><td>${t}</td><td>${v}</td><td>Activo</td><td><button class='btn btn-warning btn-sm' onclick='editarFila(this)'>Editar</button> <button class='btn btn-danger btn-sm' onclick='eliminarFila(this)'>Eliminar</button></td></tr>`);
  }
  document.getElementById('cfgConcepto').value='';
  document.getElementById('cfgValor').value='';
 }
 </script>
 
-</body></html>
-<!-- V91 mensaje guardado -->
+
+
+
+
+<script>
+let rangosTmp=[];
+let editIndex=-1;
+let rangoPreguntaId=null;
+const RANGOS_CONFIGURADOS={{ rangos_por_pregunta|default({})|tojson }};
+
+async function cargarRangos(idPregunta){
+ rangoPreguntaId=idPregunta;
+ const respaldo=RANGOS_CONFIGURADOS[String(idPregunta)]||[];
+ rangosTmp=respaldo.map(r=>({
+    desde:String(r.desde||''),
+    hasta:String(r.hasta||''),
+    valor:String(r.valor||'')
+ }));
+ renderTablaRangos();
+ try{
+   const resp=await fetch('/api/rangos?idPregunta='+encodeURIComponent(idPregunta));
+   const data=await resp.json();
+   if(!resp.ok || data.ok===false){
+     alert(data.error||'No fue posible cargar los rangos');
+     renderTablaRangos();
+     return;
+   }
+   rangosTmp=(data.rangos||[]).map(r=>({
+     desde:String(r.desde||''),
+     hasta:String(r.hasta||''),
+     valor:String(r.valor||'')
+   }));
+ }catch(e){
+   alert('Error cargando rangos: '+e);
+ }
+ renderTablaRangos();
+}
+
+async function guardarRangos(){
+ if(!rangoPreguntaId){ alert('No se encontro la pregunta para guardar rangos'); return; }
+ const resp=await fetch('/api/rangos/guardar_todos',{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({idPregunta:rangoPreguntaId,rangos:rangosTmp})
+ });
+ const data=await resp.json().catch(()=>({}));
+ if(!resp.ok || data.ok===false){
+   alert(data.error||'No fue posible guardar los rangos');
+ }
+}
+
+function renderTablaRangos(){
+ const tb=document.getElementById('tablaRangos');
+ if(!tb) return;
+ tb.innerHTML='';
+ rangosTmp.forEach((r,i)=>{
+   tb.innerHTML+=`<tr>
+   <td>${r.desde}</td>
+   <td>${r.hasta}</td>
+   <td>${r.valor}</td>
+   <td>
+    <button class="btn btn-warning btn-sm" onclick="editarRango(${i})">Editar</button>
+    <button class="btn btn-danger btn-sm" onclick="eliminarRango(${i})">Eliminar</button>
+   </td></tr>`;
+ });
+}
+
+function agregarRango(){
+ const d=document.getElementById('desde')?.value||'';
+ const h=document.getElementById('hasta')?.value||'';
+ const v=document.getElementById('valor')?.value||'';
+ if(!d||!h||!v){ alert('Debe diligenciar Desde, Hasta y Valor Base'); return; }
+
+ if(editIndex>=0){
+   rangosTmp[editIndex]={desde:d,hasta:h,valor:v};
+   editIndex=-1;
+ }else{
+   rangosTmp.push({desde:d,hasta:h,valor:v});
+ }
+
+ document.getElementById('desde').value='';
+ document.getElementById('hasta').value='';
+ document.getElementById('valor').value='';
+ renderTablaRangos();
+ guardarRangos();
+}
+
+function editarRango(i){
+ const r=rangosTmp[i];
+ document.getElementById('desde').value=r.desde;
+ document.getElementById('hasta').value=r.hasta;
+ document.getElementById('valor').value=r.valor;
+ editIndex=i;
+}
+
+function eliminarRango(i){
+ if(confirm('¿Eliminar rango?')){
+   rangosTmp.splice(i,1);
+   renderTablaRangos();
+   guardarRangos();
+ }
+}
+</script>
+
 
 <script>
 function editarConceptoTmp(c,t,v){
@@ -859,7 +1030,7 @@ function editarConceptoTmp(c,t,v){
  if(cv) cv.value=v;
  if(co) co.value=c;
 const b=document.getElementById('btnConcepto');
-if(b){ b.innerHTML='💾 Actualizar Concepto'; }
+if(b){ b.innerHTML='Actualizar Concepto'; }
 }
 function eliminarConceptoTmp(btn){
  if(confirm('¿Eliminar concepto?')){
@@ -896,6 +1067,11 @@ async function guardarConceptoCSV(){
         concepto_original:document.getElementById('conceptoOriginal')?document.getElementById('conceptoOriginal').value:'', activo:1
       })
    });
+   const data=await resp.json().catch(()=>({}));
+   if(!resp.ok || data.ok===false){
+     alert(data.error||'No fue posible guardar la configuración');
+     return;
+   }
    if(typeof renderConceptos==='function'){renderConceptos();}
    
 const co=document.getElementById('conceptoOriginal');
@@ -906,3 +1082,31 @@ alert('Configuración guardada');
  }catch(e){alert('Error guardando: '+e);}
 }
 </script>
+
+
+
+<script>
+document.addEventListener('click', function(ev){
+  const btn = ev.target.closest('[data-bs-toggle="tab"]');
+  if(!btn || window.bootstrap){ return; }
+  const targetSelector = btn.getAttribute('data-bs-target');
+  const target = targetSelector ? document.querySelector(targetSelector) : null;
+  if(!target){ return; }
+  ev.preventDefault();
+  const tabs = btn.closest('.nav-tabs');
+  if(tabs){
+    tabs.querySelectorAll('[data-bs-toggle="tab"]').forEach(x=>x.classList.remove('active'));
+  }
+  btn.classList.add('active');
+  const container = target.parentElement;
+  if(container){
+    container.querySelectorAll('.tab-pane').forEach(p=>{
+      p.classList.remove('show','active');
+      p.style.display='none';
+    });
+  }
+  target.classList.add('show','active');
+  target.style.display='block';
+});
+</script>
+</body></html>

@@ -1,0 +1,11 @@
+﻿Operacion,Parametro,Etiqueta,Descripcion,Requerido
+RANGO_TICKETS,CANTIDAD_TICKETS,Cantidad de Tickets,Pregunta numerica con tickets base,1
+RANGO_TICKETS,OPERACION_DELEGADA,Cantidad Tickets Operacion Delegada,Pregunta numerica que suma tickets delegados,1
+RANGO_TICKETS,HORARIO_ATENCION,Horario de Atencion,Pregunta lista con porcentaje por horario,1
+RANGO_TICKETS,DISPONIBILIDAD,Disponibilidad,Pregunta lista con porcentaje de disponibilidad,1
+RANGO_TICKETS,VALOR_UNITARIO,Valor Unitario Ticket,Pregunta calculada que contiene los rangos,1
+SERVICIOS_EXCEL,PRODUCTO_SERVICIO,Producto/Servicio,Pregunta lista para seleccionar el producto o servicio,1
+SERVICIOS_EXCEL,PERFIL,Perfil,Pregunta lista con perfiles y valores base,1
+SERVICIOS_EXCEL,PORCENTAJE,Porcentaje,Pregunta numerica que aplica porcentaje al valor del perfil,1
+SERVICIOS_EXCEL,DISPONIBILIDAD,Disponibilidad,Pregunta lista opcional para recargo,0
+SERVICIOS_EXCEL,TOTAL_SERVICIO,Total Servicio,Pregunta calculada principal,1

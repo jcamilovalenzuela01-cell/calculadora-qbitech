@@ -1,0 +1,3049 @@
+{
+  "schema_version": "1.2",
+  "description": "Modelo normalizado para formularios, preguntas, opciones, rangos y motor parametrizable de preguntas calculadas.",
+  "entities": {
+    "calculos_config": [
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "APLICAR_DISPONIBILIDAD",
+        "Valor": 1
+      }
+    ],
+    "calculos_config_def": [
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "APLICAR_DISPONIBILIDAD",
+        "Etiqueta": "Aplicar disponibilidad",
+        "Tipo": "BOOLEANO",
+        "ValorDefault": 1,
+        "Opciones": "SI=1;NO=0",
+        "Descripcion": "Define si el calculo suma el recargo de la pregunta disponibilidad"
+      }
+    ],
+    "calculos_operaciones": [
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Titulo": "Calculo por rangos de tickets",
+        "Descripcion": "Suma cantidades parametrizadas, busca el rango aplicable y usa el valor base del rango.",
+        "Formula": "Total = tickets cotizados x valor unitario del rango, con ajustes parametrizados segun preguntas asociadas.",
+        "UsaRangos": 1,
+        "UsaParametros": 1,
+        "UsaConfiguracion": 0
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Titulo": "Calculo de servicios por perfil",
+        "Descripcion": "Calcula el valor de uno o varios servicios usando producto, perfil, porcentaje y disponibilidad opcional.",
+        "Formula": "Total servicio = valor del perfil x porcentaje / 100. Si disponibilidad esta activa, suma recargo de disponibilidad.",
+        "UsaRangos": 0,
+        "UsaParametros": 1,
+        "UsaConfiguracion": 1
+      }
+    ],
+    "calculos_parametros": [
+      {
+        "IdFormulario": 2,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "CANTIDAD_TICKETS",
+        "IdVariable": 46
+      },
+      {
+        "IdFormulario": 2,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "DISPONIBILIDAD",
+        "IdVariable": 49
+      },
+      {
+        "IdFormulario": 2,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "HORARIO_ATENCION",
+        "IdVariable": 48
+      },
+      {
+        "IdFormulario": 2,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "OPERACION_DELEGADA",
+        "IdVariable": 47
+      },
+      {
+        "IdFormulario": 2,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 50
+      },
+      {
+        "IdFormulario": 101,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "CANTIDAD_TICKETS",
+        "IdVariable": 10101
+      },
+      {
+        "IdFormulario": 101,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "DISPONIBILIDAD",
+        "IdVariable": 10104
+      },
+      {
+        "IdFormulario": 101,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "HORARIO_ATENCION",
+        "IdVariable": 10103
+      },
+      {
+        "IdFormulario": 101,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "OPERACION_DELEGADA",
+        "IdVariable": 10102
+      },
+      {
+        "IdFormulario": 101,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 10105
+      },
+      {
+        "IdFormulario": 103,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 10305
+      },
+      {
+        "IdFormulario": 102,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 10205
+      },
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PERFIL",
+        "IdVariable": 2002
+      },
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PORCENTAJE",
+        "IdVariable": 2003
+      },
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "DISPONIBILIDAD",
+        "IdVariable": 2004
+      },
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "TOTAL_SERVICIO",
+        "IdVariable": 2005
+      },
+      {
+        "IdFormulario": 104,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "CANTIDAD_TICKETS",
+        "IdVariable": 10401
+      },
+      {
+        "IdFormulario": 105,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 10505
+      },
+      {
+        "IdFormulario": 104,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "HORARIO_ATENCION",
+        "IdVariable": 10403
+      },
+      {
+        "IdFormulario": 104,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "DISPONIBILIDAD",
+        "IdVariable": 10404
+      },
+      {
+        "IdFormulario": 104,
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "IdVariable": 10405
+      },
+      {
+        "IdFormulario": 200,
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PRODUCTO_SERVICIO",
+        "IdVariable": 2001
+      }
+    ],
+    "calculos_parametros_def": [
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "CANTIDAD_TICKETS",
+        "Etiqueta": "Cantidad de Tickets",
+        "Descripcion": "Pregunta numerica con tickets base",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "OPERACION_DELEGADA",
+        "Etiqueta": "Cantidad Tickets Operacion Delegada",
+        "Descripcion": "Pregunta numerica que suma tickets delegados",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "HORARIO_ATENCION",
+        "Etiqueta": "Horario de Atencion",
+        "Descripcion": "Pregunta lista con porcentaje por horario",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "DISPONIBILIDAD",
+        "Etiqueta": "Disponibilidad",
+        "Descripcion": "Pregunta lista con porcentaje de disponibilidad",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "RANGO_TICKETS",
+        "Parametro": "VALOR_UNITARIO",
+        "Etiqueta": "Valor Unitario Ticket",
+        "Descripcion": "Pregunta calculada que contiene los rangos",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PRODUCTO_SERVICIO",
+        "Etiqueta": "Producto/Servicio",
+        "Descripcion": "Pregunta lista para seleccionar el producto o servicio",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PERFIL",
+        "Etiqueta": "Perfil",
+        "Descripcion": "Pregunta lista con perfiles y valores base",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "PORCENTAJE",
+        "Etiqueta": "Porcentaje",
+        "Descripcion": "Pregunta numerica que aplica porcentaje al valor del perfil",
+        "Requerido": 1
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "DISPONIBILIDAD",
+        "Etiqueta": "Disponibilidad",
+        "Descripcion": "Pregunta lista opcional para recargo",
+        "Requerido": 0
+      },
+      {
+        "Operacion": "SERVICIOS_EXCEL",
+        "Parametro": "TOTAL_SERVICIO",
+        "Etiqueta": "Total Servicio",
+        "Descripcion": "Pregunta calculada principal",
+        "Requerido": 1
+      }
+    ],
+    "configuracion_formularios": [
+      {
+        "id_formulario": 3,
+        "concepto": "Ganancia",
+        "tipo": "PORCENTAJE",
+        "valor": 35,
+        "activo": 1
+      },
+      {
+        "id_formulario": 1,
+        "concepto": "Ganancia",
+        "tipo": "PORCENTAJE",
+        "valor": 35,
+        "activo": 1
+      },
+      {
+        "id_formulario": 1,
+        "concepto": "PRUEBA",
+        "tipo": "VALOR_FIJO",
+        "valor": 1000,
+        "activo": 1
+      }
+    ],
+    "cotizaciones": [
+      {
+        "fecha": "2026-05-30 13:35:32",
+        "total": 1708.0
+      },
+      {
+        "fecha": "2026-05-30 16:58:02",
+        "total": 17172.0
+      },
+      {
+        "fecha": "2026-05-30 20:34:08",
+        "total": 1799.0
+      },
+      {
+        "fecha": "2026-05-30 20:45:49",
+        "total": 1801.0
+      },
+      {
+        "fecha": "2026-06-22 15:14:06",
+        "total": 5692500.0
+      },
+      {
+        "fecha": "2026-06-22 15:14:24",
+        "total": 5692500.0
+      },
+      {
+        "fecha": "2026-06-22 15:14:41",
+        "total": 5692500.0
+      }
+    ],
+    "formularios": [
+      {
+        "IdFormulario": 1,
+        "Nombre": "Mesa de Ayuda",
+        "Descripcion": "Formulario principal",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 2,
+        "Nombre": "Mesa de Ayuda IAFIS",
+        "Descripcion": "Mesa de Ayuda IAFIS",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 101,
+        "Nombre": "Formulario Prueba Mixto 1",
+        "Descripcion": "Formulario de pruebas automatizadas mixtas 1",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 200,
+        "Nombre": "Calculadora QBITIC Servicios",
+        "Descripcion": "Formulario basado en hoja CALCULADORA del Excel QBITIC 2024",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 102,
+        "Nombre": "Formulario Prueba Mixto 2",
+        "Descripcion": "Formulario de pruebas automatizadas mixtas 2",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 103,
+        "Nombre": "Formulario Prueba Mixto 3",
+        "Descripcion": "Formulario de pruebas automatizadas mixtas 3",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 104,
+        "Nombre": "Formulario Prueba Mixto 4",
+        "Descripcion": "Formulario de pruebas automatizadas mixtas 4",
+        "Activo": 1
+      },
+      {
+        "IdFormulario": 105,
+        "Nombre": "Formulario Prueba Mixto 5",
+        "Descripcion": "Formulario de pruebas automatizadas mixtas 5",
+        "Activo": 1
+      }
+    ],
+    "opciones": [
+      {
+        "IdVariable": 1,
+        "Opcion": "12*12",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 1,
+        "Opcion": "5*11",
+        "Valor": 200.0
+      },
+      {
+        "IdVariable": 1,
+        "Opcion": "5*8",
+        "Valor": 1000.0
+      },
+      {
+        "IdVariable": 1,
+        "Opcion": "6*11",
+        "Valor": 400.0
+      },
+      {
+        "IdVariable": 1,
+        "Opcion": "6*8",
+        "Valor": 300.0
+      },
+      {
+        "IdVariable": 1,
+        "Opcion": "7*24",
+        "Valor": 500.0
+      },
+      {
+        "IdVariable": 2,
+        "Opcion": "Español",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2,
+        "Opcion": "Ingles",
+        "Valor": 5.0
+      },
+      {
+        "IdVariable": 2,
+        "Opcion": "Portugues",
+        "Valor": 8.0
+      },
+      {
+        "IdVariable": 3,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 3,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 4,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 4,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 5,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 5,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 6,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 6,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 7,
+        "Opcion": "Fisica",
+        "Valor": 20.0
+      },
+      {
+        "IdVariable": 7,
+        "Opcion": "Remoto",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 8,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 8,
+        "Opcion": "SI",
+        "Valor": 5.0
+      },
+      {
+        "IdVariable": 9,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 9,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 10,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 11,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 11,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 12,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 12,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 13,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 13,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 14,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 14,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 15,
+        "Opcion": "Comercilaes",
+        "Valor": 5.0
+      },
+      {
+        "IdVariable": 15,
+        "Opcion": "Onpremise",
+        "Valor": 20.0
+      },
+      {
+        "IdVariable": 16,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 16,
+        "Opcion": "SI",
+        "Valor": 2.0
+      },
+      {
+        "IdVariable": 17,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 17,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 18,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 18,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 19,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 19,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 20,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 20,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 21,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 21,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 22,
+        "Opcion": "Aplicación Ofimatica",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 22,
+        "Opcion": "Infraestructura",
+        "Valor": 30.0
+      },
+      {
+        "IdVariable": 22,
+        "Opcion": "Onpremise",
+        "Valor": 20.0
+      },
+      {
+        "IdVariable": 22,
+        "Opcion": "etc",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 23,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 23,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 24,
+        "Opcion": "M1",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 24,
+        "Opcion": "M2",
+        "Valor": 20.0
+      },
+      {
+        "IdVariable": 24,
+        "Opcion": "M3",
+        "Valor": 30.0
+      },
+      {
+        "IdVariable": 25,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 25,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 26,
+        "Opcion": "Diario",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 26,
+        "Opcion": "Mensual",
+        "Valor": 4.0
+      },
+      {
+        "IdVariable": 26,
+        "Opcion": "Quincenal",
+        "Valor": 3.0
+      },
+      {
+        "IdVariable": 26,
+        "Opcion": "Semanal",
+        "Valor": 2.0
+      },
+      {
+        "IdVariable": 27,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 27,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 28,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 28,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 29,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 29,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 30,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 30,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 31,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 31,
+        "Opcion": "SI",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 32,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 32,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 33,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 33,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 34,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 34,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 35,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 35,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 36,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 36,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 37,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 37,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 38,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 38,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 39,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 39,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 40,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 40,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 41,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 41,
+        "Opcion": "SI",
+        "Valor": 1.0
+      },
+      {
+        "IdVariable": 48,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 48,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 48,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 49,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 49,
+        "Opcion": "SI",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10103,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 10103,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10103,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 10104,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10104,
+        "Opcion": "SI",
+        "Valor": 11.0
+      },
+      {
+        "IdVariable": 10106,
+        "Opcion": "Espanol",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10106,
+        "Opcion": "Ingles",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10106,
+        "Opcion": "Portugues",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10110,
+        "Opcion": "Basico",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10110,
+        "Opcion": "Especial",
+        "Valor": 5000.0
+      },
+      {
+        "IdVariable": 10110,
+        "Opcion": "Premium",
+        "Valor": 10000.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "ADMIN. CONTROLADOR DE DOMINIO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "APLICACIONES SOA",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "APLICACIONES WEB",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "BD",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "CLOUD",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "Gerencia",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "INFORMES Y REPORTERIA",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "INFRAESTRUCTURA",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "MONITOREO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "OFFICE 365",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "PLATAFORMA_DE_BACKUP",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2001,
+        "Opcion": "SO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AD. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AD. Master (Administración y Soporte N3 PLUS)",
+        "Valor": 16634167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AD. Master (Administración y Soporte N3)",
+        "Valor": 13234167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AD. Senior (Administración y Soporte N1/N2)",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AS. Junior (Tareas de Operación)",
+        "Valor": 12384167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AS. Master (Administración y Soporte N3 PLUS)",
+        "Valor": 21734167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AS. Master (Administración y Soporte N3)",
+        "Valor": 17484167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AS. Senior (Administración y Soporte N1/N2)",
+        "Valor": 14934167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AW. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AW. Master (Administración y Soporte N3 PLUS)",
+        "Valor": 16634167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AW. Master (Administración y Soporte N3)",
+        "Valor": 13234167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "AW. Senior (Administración y Soporte N1/N2)",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "BD. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "BD. Master (Administración y Soporte N3)",
+        "Valor": 15784167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "BD. Master (Administración y Soporte N3) Oracle",
+        "Valor": 22584167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "BD. Senior (Administración y Soporte N1/N2)",
+        "Valor": 12384167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "CL. Junior (Tareas de Operación)",
+        "Valor": 12384167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "CL. Master (Administración y Soporte N3)",
+        "Valor": 17484167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "CL. Master (Administración y Soporte N3) Oracle",
+        "Valor": 21734167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "CL. Senior (Administración y Soporte N1/N2)",
+        "Valor": 14934167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "Gerente de Servicio",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IN. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IN. Master (Administración y Soporte N3)",
+        "Valor": 13234167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IN. Master (Administración y Soporte N3) Oracle",
+        "Valor": 16634167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IN. Senior (Administración y Soporte N1/N2)",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IR. Junior (Tareas de Operación)",
+        "Valor": 3544167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IR. Master (Administración y Soporte N3)",
+        "Valor": 7284167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IR. Master (Administración y Soporte N3) Oracle",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "IR. Senior (Administración y Soporte N1/N2)",
+        "Valor": 5244167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "MO. Junior (Tareas de Operación)",
+        "Valor": 3544167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "MO. Master (Administración y Soporte N3)",
+        "Valor": 7284167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "MO. Master (Administración y Soporte N3) Oracle",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "MO. Senior (Administración y Soporte N1/N2)",
+        "Valor": 5244167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "OF. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "OF. Master (Administración y Soporte N3)",
+        "Valor": 13234167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "OF. Master (Administración y Soporte N3) Oracle",
+        "Valor": 16634167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "OF. Senior (Administración y Soporte N1/N2)",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "PL. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "PL. Master (Administración y Soporte N3 PLUS)",
+        "Valor": 16634167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "PL. Master (Administración y Soporte N3)",
+        "Valor": 13234167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "PL. Senior (Administración y Soporte N1/N2)",
+        "Valor": 10684167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "SO. Junior (Tareas de Operación)",
+        "Valor": 8134167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "SO. Master (Administración y Soporte N3 PLUS)",
+        "Valor": 22584167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "SO. Master (Administración y Soporte N3)",
+        "Valor": 15784167.0
+      },
+      {
+        "IdVariable": 2002,
+        "Opcion": "SO. Senior (Administración y Soporte N1/N2)",
+        "Valor": 12384167.0
+      },
+      {
+        "IdVariable": 2004,
+        "Opcion": "5X7",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2004,
+        "Opcion": "5X8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 2004,
+        "Opcion": "7X24",
+        "Valor": 35.0
+      },
+      {
+        "IdVariable": 10203,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10203,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 10203,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 10204,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10204,
+        "Opcion": "SI",
+        "Valor": 12.0
+      },
+      {
+        "IdVariable": 10206,
+        "Opcion": "Espanol",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10206,
+        "Opcion": "Ingles",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10206,
+        "Opcion": "Portugues",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10210,
+        "Opcion": "Basico",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10210,
+        "Opcion": "Especial",
+        "Valor": 10000.0
+      },
+      {
+        "IdVariable": 10210,
+        "Opcion": "Premium",
+        "Valor": 20000.0
+      },
+      {
+        "IdVariable": 10303,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10303,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 10303,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 10304,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10304,
+        "Opcion": "SI",
+        "Valor": 13.0
+      },
+      {
+        "IdVariable": 10306,
+        "Opcion": "Espanol",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10306,
+        "Opcion": "Ingles",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10306,
+        "Opcion": "Portugues",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10310,
+        "Opcion": "Basico",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10310,
+        "Opcion": "Especial",
+        "Valor": 15000.0
+      },
+      {
+        "IdVariable": 10310,
+        "Opcion": "Premium",
+        "Valor": 30000.0
+      },
+      {
+        "IdVariable": 10403,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10403,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 10403,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 10404,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10404,
+        "Opcion": "SI",
+        "Valor": 14.0
+      },
+      {
+        "IdVariable": 10406,
+        "Opcion": "Espanol",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10406,
+        "Opcion": "Ingles",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10406,
+        "Opcion": "Portugues",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10410,
+        "Opcion": "Basico",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10410,
+        "Opcion": "Especial",
+        "Valor": 20000.0
+      },
+      {
+        "IdVariable": 10410,
+        "Opcion": "Premium",
+        "Valor": 40000.0
+      },
+      {
+        "IdVariable": 10503,
+        "Opcion": "5*8",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10503,
+        "Opcion": "5*12",
+        "Valor": 25.0
+      },
+      {
+        "IdVariable": 10503,
+        "Opcion": "7*24",
+        "Valor": 40.0
+      },
+      {
+        "IdVariable": 10504,
+        "Opcion": "NO",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10504,
+        "Opcion": "SI",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10506,
+        "Opcion": "Espanol",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10506,
+        "Opcion": "Ingles",
+        "Valor": 10.0
+      },
+      {
+        "IdVariable": 10506,
+        "Opcion": "Portugues",
+        "Valor": 15.0
+      },
+      {
+        "IdVariable": 10510,
+        "Opcion": "Basico",
+        "Valor": 0.0
+      },
+      {
+        "IdVariable": 10510,
+        "Opcion": "Especial",
+        "Valor": 25000.0
+      },
+      {
+        "IdVariable": 10510,
+        "Opcion": "Premium",
+        "Valor": 50000.0
+      }
+    ],
+    "rangos_tickets": [
+      {
+        "IdPregunta": 50,
+        "Desde": 0,
+        "Hasta": 100,
+        "Valor": 38000
+      },
+      {
+        "IdPregunta": 50,
+        "Desde": 101,
+        "Hasta": 200,
+        "Valor": 32000
+      },
+      {
+        "IdPregunta": 50,
+        "Desde": 201,
+        "Hasta": 999999999,
+        "Valor": 35000
+      },
+      {
+        "IdPregunta": 10105,
+        "Desde": 0,
+        "Hasta": 100,
+        "Valor": 31000
+      },
+      {
+        "IdPregunta": 10105,
+        "Desde": 101,
+        "Hasta": 250,
+        "Valor": 29000
+      },
+      {
+        "IdPregunta": 10105,
+        "Desde": 251,
+        "Hasta": 999999999,
+        "Valor": 26000
+      },
+      {
+        "IdPregunta": 10405,
+        "Desde": 201,
+        "Hasta": 999999999,
+        "Valor": 35000
+      },
+      {
+        "IdPregunta": 10205,
+        "Desde": 201,
+        "Hasta": 999999999,
+        "Valor": 35000
+      },
+      {
+        "IdPregunta": 10505,
+        "Desde": 201,
+        "Hasta": 999999999,
+        "Valor": 35000
+      },
+      {
+        "IdPregunta": 10405,
+        "Desde": 101,
+        "Hasta": 200,
+        "Valor": 32000
+      }
+    ],
+    "servicios_config": [
+      {
+        "IdFormulario": 200,
+        "Parametro": "APLICAR_DISPONIBILIDAD",
+        "Valor": 1
+      }
+    ],
+    "servicios_tarifas": [
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "Gerencia",
+        "Perfil": "Gerente de Servicio",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Gerente de Servicio"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "BD",
+        "Perfil": "BD. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "BD",
+        "Perfil": "BD. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 12384167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "BD",
+        "Perfil": "BD. Master (Administración y Soporte N3)",
+        "SalarioTotal": 15784167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "BD",
+        "Perfil": "BD. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 22584167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "SO",
+        "Perfil": "SO. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "SO",
+        "Perfil": "SO. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 12384167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "SO",
+        "Perfil": "SO. Master (Administración y Soporte N3)",
+        "SalarioTotal": 15784167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "SO",
+        "Perfil": "SO. Master (Administración y Soporte N3 PLUS)",
+        "SalarioTotal": 22584167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3 PLUS)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "PLATAFORMA_DE_BACKUP",
+        "Perfil": "PL. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "PLATAFORMA_DE_BACKUP",
+        "Perfil": "PL. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "PLATAFORMA_DE_BACKUP",
+        "Perfil": "PL. Master (Administración y Soporte N3)",
+        "SalarioTotal": 13234167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "PLATAFORMA_DE_BACKUP",
+        "Perfil": "PL. Master (Administración y Soporte N3 PLUS)",
+        "SalarioTotal": 16634167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3 PLUS)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES WEB",
+        "Perfil": "AW. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES WEB",
+        "Perfil": "AW. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES WEB",
+        "Perfil": "AW. Master (Administración y Soporte N3)",
+        "SalarioTotal": 13234167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES WEB",
+        "Perfil": "AW. Master (Administración y Soporte N3 PLUS)",
+        "SalarioTotal": 16634167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3 PLUS)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES SOA",
+        "Perfil": "AS. Junior (Tareas de Operación)",
+        "SalarioTotal": 12384167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES SOA",
+        "Perfil": "AS. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 14934167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES SOA",
+        "Perfil": "AS. Master (Administración y Soporte N3)",
+        "SalarioTotal": 17484167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "APLICACIONES SOA",
+        "Perfil": "AS. Master (Administración y Soporte N3 PLUS)",
+        "SalarioTotal": 21734167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3 PLUS)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "OFFICE 365",
+        "Perfil": "OF. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "OFFICE 365",
+        "Perfil": "OF. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "OFFICE 365",
+        "Perfil": "OF. Master (Administración y Soporte N3)",
+        "SalarioTotal": 13234167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "OFFICE 365",
+        "Perfil": "OF. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 16634167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFRAESTRUCTURA",
+        "Perfil": "IN. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFRAESTRUCTURA",
+        "Perfil": "IN. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFRAESTRUCTURA",
+        "Perfil": "IN. Master (Administración y Soporte N3)",
+        "SalarioTotal": 13234167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFRAESTRUCTURA",
+        "Perfil": "IN. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 16634167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "MONITOREO",
+        "Perfil": "MO. Junior (Tareas de Operación)",
+        "SalarioTotal": 3544167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "MONITOREO",
+        "Perfil": "MO. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 5244167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "MONITOREO",
+        "Perfil": "MO. Master (Administración y Soporte N3)",
+        "SalarioTotal": 7284167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "MONITOREO",
+        "Perfil": "MO. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "ADMIN. CONTROLADOR DE DOMINIO",
+        "Perfil": "AD. Junior (Tareas de Operación)",
+        "SalarioTotal": 8134167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "ADMIN. CONTROLADOR DE DOMINIO",
+        "Perfil": "AD. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "ADMIN. CONTROLADOR DE DOMINIO",
+        "Perfil": "AD. Master (Administración y Soporte N3)",
+        "SalarioTotal": 13234167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "ADMIN. CONTROLADOR DE DOMINIO",
+        "Perfil": "AD. Master (Administración y Soporte N3 PLUS)",
+        "SalarioTotal": 16634167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3 PLUS)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "CLOUD",
+        "Perfil": "CL. Junior (Tareas de Operación)",
+        "SalarioTotal": 12384167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "CLOUD",
+        "Perfil": "CL. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 14934167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "CLOUD",
+        "Perfil": "CL. Master (Administración y Soporte N3)",
+        "SalarioTotal": 17484167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "CLOUD",
+        "Perfil": "CL. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 21734167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFORMES Y REPORTERIA",
+        "Perfil": "IR. Junior (Tareas de Operación)",
+        "SalarioTotal": 3544167.0,
+        "DescripcionPerfil": "Junior (Tareas de Operación)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFORMES Y REPORTERIA",
+        "Perfil": "IR. Senior (Administración y Soporte N1/N2)",
+        "SalarioTotal": 5244167.0,
+        "DescripcionPerfil": "Senior (Administración y Soporte N1/N2)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFORMES Y REPORTERIA",
+        "Perfil": "IR. Master (Administración y Soporte N3)",
+        "SalarioTotal": 7284167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3)"
+      },
+      {
+        "IdFormulario": 200,
+        "ProductoServicio": "INFORMES Y REPORTERIA",
+        "Perfil": "IR. Master (Administración y Soporte N3) Oracle",
+        "SalarioTotal": 10684167.0,
+        "DescripcionPerfil": "Master (Administración y Soporte N3) Oracle"
+      }
+    ],
+    "usuarios": [
+      {
+        "IdUsuario": 1,
+        "Usuario": "admin",
+        "Clave": "scrypt:32768:8:1$uEuokupePUzvKHJC$4638bec136e216f725c63547f4fbbda814d3970a4edc7a5321d5dc3f278d9b0c15876962e4a432a60f566027300df6a5876bdc6549b8bf1473cb40053cf8847b",
+        "Nombre": "Administrador General",
+        "Rol": "Administrador",
+        "IdFormulario": 1,
+        "Activo": 1
+      },
+      {
+        "IdUsuario": 2,
+        "Usuario": "operador",
+        "Clave": "scrypt:32768:8:1$D9Ga9EJ2dJn0oF3H$40fd933f49500ac7c2406f5b28b53ef8f88417597739969f60fc88ff42400a927b9f5ff6e962932af8432aa5f29e1b6d3ecf7ed0ba98e2f6a174dec9764f989b",
+        "Nombre": "Usuario Operador",
+        "Rol": "Administrador",
+        "IdFormulario": 1,
+        "Activo": 1
+      },
+      {
+        "IdUsuario": 3,
+        "Usuario": "IAFIS",
+        "Clave": "scrypt:32768:8:1$oHegKae3wmXnuIpF$ddfb20f657a7b8779faba9a89313491f1a20726f29c7dc730ceb7c35f4461717ab82a81fec77cb2bc468c3107b587dd64ecca0f678026b02a6d8f30127d664cd",
+        "Nombre": "Usuario Consulta",
+        "Rol": "Consulta",
+        "IdFormulario": 1,
+        "Activo": 1
+      }
+    ],
+    "usuarios_formularios": [
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 101
+      },
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 102
+      },
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 103
+      },
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 104
+      },
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 105
+      },
+      {
+        "IdUsuario": 1,
+        "IdFormulario": 200
+      },
+      {
+        "IdUsuario": 3,
+        "IdFormulario": 2
+      }
+    ],
+    "variables": [
+      {
+        "IdVariable": 1,
+        "IdFormulario": 1,
+        "Categoria": "Cobertura",
+        "Variable": "Horario de atención",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2,
+        "IdFormulario": 1,
+        "Categoria": "Cobertura",
+        "Variable": "Idioma",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 3,
+        "IdFormulario": 1,
+        "Categoria": "Canales",
+        "Variable": "Teléfono",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 4,
+        "IdFormulario": 1,
+        "Categoria": "Canales",
+        "Variable": "Correo",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 5,
+        "IdFormulario": 1,
+        "Categoria": "Canales",
+        "Variable": "WhatsApp",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 6,
+        "IdFormulario": 1,
+        "Categoria": "Canales",
+        "Variable": "Web,Chat",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 7,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Ubicación ",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 8,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Puesto de Trabajo",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 9,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Diadema",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Pantalla Adicional",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 11,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "PC",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 12,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Herramienta ITSM",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 13,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "VPN",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 14,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Herramienta Ofimatica",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 15,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Implementación de Herramienta",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 16,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Plataforma monitoreo",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 17,
+        "IdFormulario": 1,
+        "Categoria": "Infraestructura",
+        "Variable": "Canal dedicado",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 18,
+        "IdFormulario": 1,
+        "Categoria": "Monitoreo",
+        "Variable": "Servidores Pivote",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 19,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 100.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 20,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Tickets mensuales",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 10.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 21,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Sedes",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 3.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 22,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Soporte",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 23,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "SLA",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 24,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Modelo de Gobierno",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 25,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Desplazamiento",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 26,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Informe de Gestión",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 27,
+        "IdFormulario": 1,
+        "Categoria": "Operación",
+        "Variable": "Imprevisto",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 28,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Analistas N1",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 1000000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 29,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Analistas N2",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 2000000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 30,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Gerente de Servicio",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 500000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 31,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Gerente de Proyecto",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 800000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 32,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Reclutamiento",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 33,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Capacitación",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 34,
+        "IdFormulario": 1,
+        "Categoria": "RRHH",
+        "Variable": "Operativos del talento",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 35,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Poliza /Contractuales",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 36,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Impuesto Timbre",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 37,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Impuesto Estampillas",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 38,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "ICA",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 39,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Comisiones",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 40,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Costo Administrativo",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 41,
+        "IdFormulario": 1,
+        "Categoria": "Contractuales",
+        "Variable": "Costo Financiera de la Cartera",
+        "Tipo": "SELECCIÓN LISTA DESPLEGABLE",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 42,
+        "IdFormulario": 1,
+        "Categoria": "prueba",
+        "Variable": "prueba",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": "",
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 45,
+        "IdFormulario": 1,
+        "Categoria": "prueba",
+        "Variable": "prueba",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 46,
+        "IdFormulario": 2,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 47,
+        "IdFormulario": 2,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operación Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 48,
+        "IdFormulario": 2,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atención",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 49,
+        "IdFormulario": 2,
+        "Categoria": "Servicio",
+        "Variable": "¿Requiere disponibilidad?",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 50,
+        "IdFormulario": 2,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 51,
+        "IdFormulario": 2,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10101,
+        "IdFormulario": 101,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10102,
+        "IdFormulario": 101,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operacion Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10103,
+        "IdFormulario": 101,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atencion",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10104,
+        "IdFormulario": 101,
+        "Categoria": "Servicio",
+        "Variable": "Requiere disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10105,
+        "IdFormulario": 101,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 10106,
+        "IdFormulario": 101,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "PORCENTAJE",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10107,
+        "IdFormulario": 101,
+        "Categoria": "Operacion",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 2600.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10108,
+        "IdFormulario": 101,
+        "Categoria": "Operacion",
+        "Variable": "Ajuste fijo",
+        "Tipo": "NUMERO",
+        "Operacion": "SUMAR",
+        "Factor": 1000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10109,
+        "IdFormulario": 101,
+        "Categoria": "Operacion",
+        "Variable": "Porcentaje numerico",
+        "Tipo": "NUMERO",
+        "Operacion": "PORCENTAJE",
+        "Factor": 5.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10110,
+        "IdFormulario": 101,
+        "Categoria": "Servicio",
+        "Variable": "Nivel de Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2001,
+        "IdFormulario": 200,
+        "Categoria": "Servicio",
+        "Variable": "Producto/Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2002,
+        "IdFormulario": 200,
+        "Categoria": "Servicio",
+        "Variable": "Perfil",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2003,
+        "IdFormulario": 200,
+        "Categoria": "Servicio",
+        "Variable": "Porcentaje",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2004,
+        "IdFormulario": 200,
+        "Categoria": "Servicio",
+        "Variable": "Disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10201,
+        "IdFormulario": 102,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10202,
+        "IdFormulario": 102,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operacion Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10203,
+        "IdFormulario": 102,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atencion",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10204,
+        "IdFormulario": 102,
+        "Categoria": "Servicio",
+        "Variable": "Requiere disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10205,
+        "IdFormulario": 102,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 10206,
+        "IdFormulario": 102,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "PORCENTAJE",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10207,
+        "IdFormulario": 102,
+        "Categoria": "Operacion",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 2700.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10208,
+        "IdFormulario": 102,
+        "Categoria": "Operacion",
+        "Variable": "Ajuste fijo",
+        "Tipo": "NUMERO",
+        "Operacion": "SUMAR",
+        "Factor": 2000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10209,
+        "IdFormulario": 102,
+        "Categoria": "Operacion",
+        "Variable": "Porcentaje numerico",
+        "Tipo": "NUMERO",
+        "Operacion": "PORCENTAJE",
+        "Factor": 10.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10210,
+        "IdFormulario": 102,
+        "Categoria": "Servicio",
+        "Variable": "Nivel de Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10301,
+        "IdFormulario": 103,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10302,
+        "IdFormulario": 103,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operacion Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10303,
+        "IdFormulario": 103,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atencion",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10304,
+        "IdFormulario": 103,
+        "Categoria": "Servicio",
+        "Variable": "Requiere disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10305,
+        "IdFormulario": 103,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 10306,
+        "IdFormulario": 103,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "PORCENTAJE",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10307,
+        "IdFormulario": 103,
+        "Categoria": "Operacion",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 2800.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10308,
+        "IdFormulario": 103,
+        "Categoria": "Operacion",
+        "Variable": "Ajuste fijo",
+        "Tipo": "NUMERO",
+        "Operacion": "SUMAR",
+        "Factor": 3000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10309,
+        "IdFormulario": 103,
+        "Categoria": "Operacion",
+        "Variable": "Porcentaje numerico",
+        "Tipo": "NUMERO",
+        "Operacion": "PORCENTAJE",
+        "Factor": 15.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10310,
+        "IdFormulario": 103,
+        "Categoria": "Servicio",
+        "Variable": "Nivel de Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10401,
+        "IdFormulario": 104,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10402,
+        "IdFormulario": 104,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operacion Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10403,
+        "IdFormulario": 104,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atencion",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10404,
+        "IdFormulario": 104,
+        "Categoria": "Servicio",
+        "Variable": "Requiere disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10405,
+        "IdFormulario": 104,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 10406,
+        "IdFormulario": 104,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "PORCENTAJE",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10407,
+        "IdFormulario": 104,
+        "Categoria": "Operacion",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 2900.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10408,
+        "IdFormulario": 104,
+        "Categoria": "Operacion",
+        "Variable": "Ajuste fijo",
+        "Tipo": "NUMERO",
+        "Operacion": "SUMAR",
+        "Factor": 4000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10409,
+        "IdFormulario": 104,
+        "Categoria": "Operacion",
+        "Variable": "Porcentaje numerico",
+        "Tipo": "NUMERO",
+        "Operacion": "PORCENTAJE",
+        "Factor": 20.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10410,
+        "IdFormulario": 104,
+        "Categoria": "Servicio",
+        "Variable": "Nivel de Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10501,
+        "IdFormulario": 105,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad de Tickets",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10502,
+        "IdFormulario": 105,
+        "Categoria": "Volumen",
+        "Variable": "Cantidad Tickets Operacion Delegada",
+        "Tipo": "NUMERO",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10503,
+        "IdFormulario": 105,
+        "Categoria": "Servicio",
+        "Variable": "Horario de Atencion",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10504,
+        "IdFormulario": 105,
+        "Categoria": "Servicio",
+        "Variable": "Requiere disponibilidad",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10505,
+        "IdFormulario": 105,
+        "Categoria": "Costos",
+        "Variable": "Valor Unitario Ticket",
+        "Tipo": "CALCULADA",
+        "Operacion": "RANGO_TICKETS",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      },
+      {
+        "IdVariable": 10506,
+        "IdFormulario": 105,
+        "Categoria": "Servicio",
+        "Variable": "Idioma",
+        "Tipo": "LISTA",
+        "Operacion": "PORCENTAJE",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10507,
+        "IdFormulario": 105,
+        "Categoria": "Operacion",
+        "Variable": "Usuarios soportados",
+        "Tipo": "NUMERO",
+        "Operacion": "MULTIPLICAR",
+        "Factor": 3000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10508,
+        "IdFormulario": 105,
+        "Categoria": "Operacion",
+        "Variable": "Ajuste fijo",
+        "Tipo": "NUMERO",
+        "Operacion": "SUMAR",
+        "Factor": 5000.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10509,
+        "IdFormulario": 105,
+        "Categoria": "Operacion",
+        "Variable": "Porcentaje numerico",
+        "Tipo": "NUMERO",
+        "Operacion": "PORCENTAJE",
+        "Factor": 25.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 10510,
+        "IdFormulario": 105,
+        "Categoria": "Servicio",
+        "Variable": "Nivel de Servicio",
+        "Tipo": "LISTA",
+        "Operacion": "FIJO",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 1
+      },
+      {
+        "IdVariable": 2005,
+        "IdFormulario": 200,
+        "Categoria": "Costos",
+        "Variable": "Total Servicio",
+        "Tipo": "CALCULADA",
+        "Operacion": "SERVICIOS_EXCEL",
+        "Factor": 0.0,
+        "Estado": "Activo",
+        "Visible": 0
+      }
+    ]
+  },
+  "relationships": [
+    {
+      "from": "variables.IdFormulario",
+      "to": "formularios.IdFormulario"
+    },
+    {
+      "from": "opciones.IdVariable",
+      "to": "variables.IdVariable"
+    },
+    {
+      "from": "rangos_tickets.IdPregunta",
+      "to": "variables.IdVariable"
+    },
+    {
+      "from": "calculos_parametros.IdFormulario",
+      "to": "formularios.IdFormulario"
+    },
+    {
+      "from": "calculos_parametros.IdVariable",
+      "to": "variables.IdVariable"
+    },
+    {
+      "from": "calculos_parametros.Operacion",
+      "to": "calculos_operaciones.Operacion"
+    },
+    {
+      "from": "calculos_parametros_def.Operacion",
+      "to": "calculos_operaciones.Operacion"
+    },
+    {
+      "from": "calculos_config_def.Operacion",
+      "to": "calculos_operaciones.Operacion"
+    },
+    {
+      "from": "calculos_config.Operacion",
+      "to": "calculos_operaciones.Operacion"
+    },
+    {
+      "from": "servicios_tarifas.IdFormulario",
+      "to": "formularios.IdFormulario"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 id_formulario,concepto,tipo,valor,activo
-3,Ganancia,PORCENTAJE,35,1
 1,Ganancia,PORCENTAJE,35,1
 1,PRUEBA,VALOR_FIJO,1000,1
+200,Ganancia,PORCENTAJE,35,1
+300,Ganancia Prueba,PORCENTAJE,10,1

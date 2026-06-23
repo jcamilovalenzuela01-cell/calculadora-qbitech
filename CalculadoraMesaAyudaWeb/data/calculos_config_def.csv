@@ -1,0 +1,6 @@
+Operacion,Parametro,Etiqueta,Tipo,ValorDefault,Opciones,Descripcion
+FIJO,VALOR_CONSTANTE,Valor constante,NUMERO,0,,"Se usa cuando no se selecciona una pregunta origen."
+SUMAR,AJUSTE,Valor adicional,NUMERO,0,,"Valor fijo opcional que se suma al resultado de los operandos."
+MULTIPLICAR,FACTOR,Factor adicional,NUMERO,1,,"Factor opcional aplicado al producto de los operandos."
+PORCENTAJE,PORCENTAJE_FIJO,Porcentaje fijo,NUMERO,0,,"Porcentaje usado si no se selecciona una pregunta con rol PORCENTAJE."
+SERVICIOS_EXCEL,APLICAR_DISPONIBILIDAD,Aplicar disponibilidad,BOOLEANO,1,SI=1;NO=0,"Define si el calculo suma el recargo de la pregunta disponibilidad."

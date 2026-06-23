@@ -1,58 +1,136 @@
-# V54 DASHBOARD DEFAULT REDIRECT
-
-# ===== V51 DASHBOARD ADMINISTRATIVO =====
-# Ajuste propuesto:
-# 1. Cuando request.args.get('vista','') == '' mostrar dashboard.
-# 2. Calcular:
-#    total_usuarios     = len(pd.read_csv('data/usuarios.csv'))
-#    total_formularios  = len(pd.read_csv('data/formularios.csv'))
-#    total_cotizaciones = len(pd.read_csv('data/cotizaciones.csv')) if existe.
-# 3. Enviar al template:
-#    dashboard={
-#       'usuarios':total_usuarios,
-#       'formularios':total_formularios,
-#       'cotizaciones':total_cotizaciones
-#    }
-# 4. En cuestionario_admin.html agregar un bloque inicial:
-#    {% if not request.args.get('vista') %}
-#      tarjetas KPI + 3 canvas Chart.js
-#    {% endif %}
-# =======================================
-
-
 from flask import Flask, render_template, request, jsonify, session, redirect, send_file
 import pandas as pd, os
+import hmac
+import io
+import json
+import re
+import secrets
+import unicodedata
+from functools import wraps
+from pathlib import Path
+from markupsafe import escape
+from urllib.parse import quote
+from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
 
+BASE_DIR = Path(__file__).resolve().parent
+os.chdir(BASE_DIR)
+
 app=Flask(__name__)
-app.secret_key="QBITECH2026"
+app.config.update(
+    SECRET_KEY=os.environ.get('SECRET_KEY') or secrets.token_hex(32),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE', '').lower() in ('1', 'true', 'yes'),
+    MAX_CONTENT_LENGTH=2 * 1024 * 1024,
+)
+
+
+def _is_password_hash(value):
+    return str(value).startswith(('scrypt:', 'pbkdf2:'))
+
+
+def _authenticate_user(usuario, clave):
+    path='data/usuarios.csv'
+    usuarios=pd.read_csv(path).fillna('')
+    columnas={str(c).strip().lower():c for c in usuarios.columns}
+    usuario_col=columnas.get('usuario')
+    clave_col=columnas.get('clave')
+    if not usuario_col or not clave_col:
+        return None
+    encontrados=usuarios[usuarios[usuario_col].astype(str)==str(usuario)]
+    if encontrados.empty:
+        return None
+    row_original=encontrados.iloc[0]
+    activo_col=columnas.get('activo')
+    if activo_col and str(row_original.get(activo_col, '1')).strip().lower() in ('0', 'false', 'no'):
+        return None
+    almacenada=str(row_original.get(clave_col, ''))
+    valida=check_password_hash(almacenada, clave) if _is_password_hash(almacenada) else hmac.compare_digest(almacenada, str(clave))
+    if not valida:
+        return None
+    if not _is_password_hash(almacenada):
+        usuarios.loc[encontrados.index[0], clave_col]=generate_password_hash(str(clave))
+        usuarios.to_csv(path,index=False)
+        row_original=usuarios.loc[encontrados.index[0]]
+    return pd.Series({nombre:row_original.get(original,'') for nombre,original in columnas.items()})
+
+
+def _unauthorized(status=401):
+    if request.path.startswith('/api/') or request.is_json or request.headers.get('X-Requested-With')=='XMLHttpRequest':
+        return jsonify({'ok':False,'error':'No autorizado'}),status
+    return redirect('/login') if status==401 else ('Acceso denegado. Solo Administradores.',403)
+
+
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not auth():
+            return _unauthorized(401)
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not auth():
+            return _unauthorized(401)
+        if not es_admin():
+            return _unauthorized(403)
+        return func(*args, **kwargs)
+    return wrapper
+
+
+def csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token']=secrets.token_urlsafe(32)
+    return session['_csrf_token']
+
+
+app.jinja_env.globals['csrf_token']=csrf_token
+
+
+@app.before_request
+def protect_csrf():
+    if request.method in ('POST','PUT','PATCH','DELETE'):
+        enviado=request.headers.get('X-CSRF-Token') or request.form.get('_csrf_token','')
+        esperado=session.get('_csrf_token','')
+        if not esperado or not hmac.compare_digest(str(enviado),str(esperado)):
+            return jsonify({'ok':False,'error':'Token CSRF inválido'}),400
+
+@app.after_request
+def evitar_cache_paginas_privadas(response):
+    if request.endpoint!='static':
+        response.headers['Cache-Control']='no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma']='no-cache'
+        response.headers['Expires']='0'
+    return response
 
 @app.route('/login',methods=['GET','POST'])
 def login():
+    error=None
+    if request.method=='GET':
+        session.clear()
     if request.method=='POST':
-        usuarios=pd.read_csv('data/usuarios.csv')
-        usuarios.columns=usuarios.columns.str.strip().str.lower()
         u=request.form.get('usuario','')
         c=request.form.get('clave','')
-        ok=usuarios[(usuarios['usuario']==u)&(usuarios['clave']==c)]
-        if not ok.empty:
+        usuario=_authenticate_user(u,c)
+        if usuario is not None:
+            session.clear()
             session['usuario']=u
-            session['idusuario']=int(ok.iloc[0].get('idusuario', ok.iloc[0].get('IdUsuario',0)))
-            try:
-                session['idusuario']=int(ok.iloc[0]['idusuario']) if 'idusuario' in ok.columns else int(ok.iloc[0]['IdUsuario'])
-            except:
-                pass
-            try:
-                session['rol']=str(ok.iloc[0].get('rol', ok.iloc[0].get('Rol','')))
-            except:
-                session['rol']=''
+            session['idusuario']=int(usuario.get('idusuario',0) or 0)
+            session['rol']=str(usuario.get('rol',''))
+            csrf_token()
             return redirect('/home')
+        error='Usuario o contraseña incorrectos'
 
-    return render_template('login.html', error=None)
+    return render_template('login.html', error=error)
 
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
+@login_required
 def logout():
     session.clear()
     return redirect('/login')
@@ -63,11 +141,608 @@ def auth():
 def es_admin():
     return str(session.get('rol','')).strip().lower()=='administrador'
 
+
+def formularios_usuario(uid):
+    try:
+        uf=pd.read_csv('data/usuarios_formularios.csv')
+        return {int(x) for x in uf[uf['IdUsuario']==int(uid)]['IdFormulario'].tolist()}
+    except Exception:
+        return set()
+
+
+def cotizaciones_por_mes_usuario(path='data/cotizaciones.csv'):
+    meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+    if not os.path.exists(path):
+        return meses,[]
+    try:
+        cot=pd.read_csv(path,engine='python',on_bad_lines='skip').fillna('')
+        if 'fecha' not in cot.columns:
+            return meses,[]
+        if 'usuario' not in cot.columns:
+            cot['usuario']='Sin usuario'
+        cot['fecha_dt']=pd.to_datetime(cot['fecha'],errors='coerce')
+        cot=cot.dropna(subset=['fecha_dt'])
+        cot['mes']=cot['fecha_dt'].dt.month
+        cot['usuario']=cot['usuario'].astype(str).str.strip().replace('', 'Sin usuario')
+        colores=['#6366F1','#10B981','#F59E0B','#EF4444','#06B6D4','#8B5CF6','#84CC16','#F97316']
+        datasets=[]
+        for indice,usuario in enumerate(sorted(cot['usuario'].unique().tolist())):
+            por_usuario=cot[cot['usuario']==usuario]
+            datos=[int((por_usuario['mes']==mes).sum()) for mes in range(1,13)]
+            color=colores[indice % len(colores)]
+            datasets.append({
+                'label':usuario,
+                'data':datos,
+                'backgroundColor':color,
+                'borderColor':color,
+                'borderWidth':1,
+            })
+        return meses,datasets
+    except Exception:
+        return meses,[]
+
+
+def puede_usar_formulario(formulario_id):
+    return es_admin() or int(formulario_id) in formularios_usuario(session.get('idusuario',0))
+
+
+def pregunta_visible(registro):
+    valor=str(registro.get('Visible',1)).strip().lower()
+    return valor not in ('0','false','no','inactivo','oculto','invisible')
+
+
+def formulario_usa_servicios_excel(formulario_id):
+    try:
+        params=pd.read_csv('data/calculos_parametros.csv').fillna('')
+        if not params[
+            (params['IdFormulario'].astype(str)==str(formulario_id))
+            & (params['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL')
+        ].empty:
+            return True
+        variables=pd.read_csv('data/variables.csv').fillna('')
+        variables=variables[pd.to_numeric(variables.get('IdFormulario'),errors='coerce')==int(formulario_id)]
+        return any(
+            str(v.get('Tipo','')).upper()=='CALCULADA'
+            and str(v.get('Operacion','')).upper()=='SERVICIOS_EXCEL'
+            for _,v in variables.iterrows()
+        )
+    except Exception:
+        return False
+
+
+def formulario_modo_servicios_excel(formulario_id):
+    try:
+        formularios=pd.read_csv('data/formularios.csv').fillna('')
+        fila=formularios[formularios['IdFormulario'].astype(str)==str(formulario_id)]
+        if fila.empty or 'ModoServiciosExcel' not in fila.columns:
+            return False
+        return int(float(fila.iloc[0].get('ModoServiciosExcel',0) or 0))==1
+    except Exception:
+        return False
+
+
+def cargar_catalogo_servicios(formulario_id):
+    try:
+        tarifas=pd.read_csv('data/servicios_tarifas.csv').fillna('')
+        tarifas=tarifas[pd.to_numeric(tarifas['IdFormulario'],errors='coerce')==int(formulario_id)]
+    except Exception:
+        tarifas=pd.DataFrame(columns=['ProductoServicio','Perfil','SalarioTotal'])
+    productos=sorted({reparar_texto_mojibake(p) for p in tarifas['ProductoServicio'].astype(str).unique().tolist()}) if not tarifas.empty else []
+    perfiles=[]
+    for _,fila in tarifas.sort_values(['ProductoServicio','Perfil']).iterrows():
+        perfiles.append({
+            'producto':reparar_texto_mojibake(fila.get('ProductoServicio','')),
+            'perfil':reparar_texto_mojibake(fila.get('Perfil','')),
+            'salario':float(fila.get('SalarioTotal',0) or 0),
+        })
+    parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
+    id_disponibilidad=str(parametros.get('DISPONIBILIDAD','2004'))
+    try:
+        opciones=pd.read_csv('data/opciones.csv').fillna('')
+        disponibilidad=opciones[opciones['IdVariable'].astype(str)==id_disponibilidad].to_dict('records')
+    except Exception:
+        disponibilidad=[]
+    if not disponibilidad:
+        disponibilidad=[
+            {'Opcion':'5X7','Valor':0},
+            {'Opcion':'5X8','Valor':0},
+            {'Opcion':'7X24','Valor':35},
+        ]
+    return {
+        'productos':productos,
+        'perfiles':perfiles,
+        'disponibilidades':[
+            {'opcion':reparar_texto_mojibake(d.get('Opcion','')), 'valor':float(d.get('Valor',0) or 0)}
+            for d in disponibilidad
+        ],
+    }
+
+
+def cargar_config_servicios(formulario_id):
+    valores={
+        'APLICAR_DISPONIBILIDAD':1.0,
+    }
+    try:
+        if os.path.exists('data/calculos_config.csv'):
+            cfg=pd.read_csv('data/calculos_config.csv').fillna('')
+            cfg=cfg[
+                (cfg['IdFormulario'].astype(str)==str(formulario_id))
+                & (cfg['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL')
+            ]
+        else:
+            cfg=pd.read_csv('data/servicios_config.csv').fillna('')
+            cfg=cfg[cfg['IdFormulario'].astype(str)==str(formulario_id)]
+        for _,fila in cfg.iterrows():
+            parametro=str(fila.get('Parametro','')).strip().upper()
+            if parametro:
+                valores[parametro]=float(fila.get('Valor',0) or 0)
+    except Exception:
+        pass
+    return valores
+
+
+def cargar_operaciones_calculadas():
+    try:
+        return pd.read_csv('data/calculos_operaciones.csv').fillna('')
+    except Exception:
+        return pd.DataFrame(columns=['Operacion','Titulo','Descripcion','Formula','UsaRangos','UsaParametros','UsaConfiguracion'])
+
+
+def cargar_def_parametros_calculo(operacion):
+    try:
+        df=pd.read_csv('data/calculos_parametros_def.csv').fillna('')
+        return df[df['Operacion'].astype(str).str.upper()==str(operacion).upper()]
+    except Exception:
+        return pd.DataFrame(columns=['Operacion','Parametro','Etiqueta','Descripcion','Requerido'])
+
+
+def cargar_def_config_calculo(operacion):
+    try:
+        df=pd.read_csv('data/calculos_config_def.csv').fillna('')
+        return df[df['Operacion'].astype(str).str.upper()==str(operacion).upper()]
+    except Exception:
+        return pd.DataFrame(columns=['Operacion','Parametro','Etiqueta','Tipo','ValorDefault','Opciones','Descripcion'])
+
+
+def cargar_config_calculo(formulario_id, operacion, id_pregunta=None):
+    valores={}
+    definicion=cargar_def_config_calculo(operacion)
+    for _,fila in definicion.iterrows():
+        valores[str(fila.get('Parametro','')).upper()]=float(fila.get('ValorDefault',0) or 0)
+    try:
+        cfg=pd.read_csv('data/calculos_config.csv').fillna('')
+        cfg=cfg[
+            (cfg['IdFormulario'].astype(str)==str(formulario_id))
+            & (cfg['Operacion'].astype(str).str.upper()==str(operacion).upper())
+        ]
+        if id_pregunta is not None and 'IdPregunta' in cfg.columns:
+            exacta=cfg[cfg['IdPregunta'].astype(str)==str(id_pregunta)]
+            if not exacta.empty:
+                cfg=exacta
+            else:
+                cfg=cfg[cfg['IdPregunta'].astype(str).isin(('', '0', 'nan'))]
+        for _,fila in cfg.iterrows():
+            valores[str(fila.get('Parametro','')).upper()]=float(fila.get('Valor',0) or 0)
+    except Exception:
+        pass
+    return valores
+
+
+def guardar_config_calculo(formulario_id, operacion, valores, id_pregunta=None):
+    path='data/calculos_config.csv'
+    cfg=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdFormulario','IdPregunta','Operacion','Parametro','Valor'])
+    if 'IdPregunta' not in cfg.columns:
+        cfg['IdPregunta']=''
+    if id_pregunta is None:
+        cfg=cfg[~((cfg['IdFormulario'].astype(str)==str(formulario_id)) & (cfg['Operacion'].astype(str).str.upper()==str(operacion).upper()) & (cfg['IdPregunta'].astype(str).isin(('', '0', 'nan'))))]
+    else:
+        cfg=cfg[~((cfg['IdFormulario'].astype(str)==str(formulario_id)) & (cfg['Operacion'].astype(str).str.upper()==str(operacion).upper()) & (cfg['IdPregunta'].astype(str)==str(id_pregunta)))]
+    for parametro,valor in valores.items():
+        cfg.loc[len(cfg)]={'IdFormulario':formulario_id,'IdPregunta':id_pregunta or '','Operacion':operacion,'Parametro':parametro,'Valor':valor}
+    cfg.to_csv(path,index=False)
+
+
+def numero_desde_texto(valor, predeterminado=0.0):
+    try:
+        if valor is None or str(valor).strip()=='':
+            return float(predeterminado)
+        texto=str(valor).replace('$','').replace(' ','').strip()
+        if ',' in texto and '.' in texto:
+            texto=texto.replace('.','').replace(',','.')
+        elif ',' in texto:
+            texto=texto.replace(',','.')
+        return float(texto)
+    except Exception:
+        try:
+            return float(valor)
+        except Exception:
+            return float(predeterminado)
+
+
+def cargar_operandos_calculo(id_pregunta):
+    path='data/calculos_operandos.csv'
+    if not os.path.exists(path):
+        return pd.DataFrame(columns=['IdPregunta','Orden','IdVariable','Rol'])
+    try:
+        operandos=pd.read_csv(path).fillna('')
+        operandos=operandos[operandos['IdPregunta'].astype(str)==str(id_pregunta)]
+        if 'Orden' in operandos.columns:
+            operandos['OrdenNum']=pd.to_numeric(operandos['Orden'],errors='coerce').fillna(0)
+            operandos=operandos.sort_values('OrdenNum')
+        return operandos
+    except Exception:
+        return pd.DataFrame(columns=['IdPregunta','Orden','IdVariable','Rol'])
+
+
+def guardar_operandos_calculo(id_pregunta, ids_variables, roles):
+    path='data/calculos_operandos.csv'
+    actual=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Orden','IdVariable','Rol'])
+    actual=actual[actual['IdPregunta'].astype(str)!=str(id_pregunta)]
+    nuevos=[]
+    orden=1
+    for id_variable, rol in zip(ids_variables, roles):
+        if str(id_variable).strip()=='':
+            continue
+        nuevos.append({
+            'IdPregunta':int(id_pregunta),
+            'Orden':orden,
+            'IdVariable':int(float(id_variable)),
+            'Rol':str(rol or 'BASE').strip().upper() or 'BASE',
+        })
+        orden+=1
+    if nuevos:
+        actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
+    actual.to_csv(path,index=False)
+
+
+def es_parametro_servicios_excel(vid, parametro):
+    try:
+        params=pd.read_csv('data/calculos_parametros.csv').fillna('')
+        return not params[
+            (params['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL')
+            & (params['Parametro'].astype(str).str.upper()==str(parametro).upper())
+            & (params['IdVariable'].astype(str)==str(vid))
+        ].empty
+    except Exception:
+        return False
+
+
+def formulario_id_por_pregunta(vid):
+    try:
+        variables=pd.read_csv('data/variables.csv').fillna('')
+        fila=variables[variables['IdVariable'].astype(str)==str(vid)]
+        if not fila.empty:
+            return int(float(fila.iloc[0].get('IdFormulario',0) or 0))
+    except Exception:
+        pass
+    try:
+        params=pd.read_csv('data/calculos_parametros.csv').fillna('')
+        fila=params[params['IdVariable'].astype(str)==str(vid)]
+        if not fila.empty:
+            return int(float(fila.iloc[0].get('IdFormulario',0) or 0))
+    except Exception:
+        pass
+    return 0
+
+
+def pregunta_es_calculo_servicios(vid):
+    return es_parametro_servicios_excel(vid,'TOTAL_SERVICIO')
+
+
+def datos_pregunta_calculada(vid):
+    try:
+        variables=pd.read_csv('data/variables.csv').fillna('')
+        fila=variables[variables['IdVariable'].astype(str)==str(vid)]
+        if not fila.empty:
+            row=fila.iloc[0]
+            return {
+                'id':int(float(row.get('IdVariable',vid) or vid)),
+                'formulario_id':int(float(row.get('IdFormulario',0) or 0)),
+                'pregunta':str(row.get('Variable','')),
+                'tipo':str(row.get('Tipo','')),
+                'operacion':str(row.get('Operacion','')),
+            }
+    except Exception:
+        pass
+    return {
+        'id':int(vid),
+        'formulario_id':formulario_id_por_pregunta(vid),
+        'pregunta':'',
+        'tipo':'CALCULADA',
+        'operacion':'',
+    }
+
+
+def sincronizar_valor_tarifa_perfil(vid, perfil, valor):
+    if not es_parametro_servicios_excel(vid,'PERFIL'):
+        return
+    path='data/servicios_tarifas.csv'
+    if not os.path.exists(path):
+        return
+    tarifas=pd.read_csv(path).fillna('')
+    mask=tarifas['Perfil'].astype(str)==str(perfil)
+    if mask.any():
+        tarifas.loc[mask,'SalarioTotal']=float(valor)
+        tarifas.to_csv(path,index=False)
+
+
+def normalizar_valor_perfil(vid, valor):
+    valor=float(valor or 0)
+    if es_parametro_servicios_excel(vid,'PERFIL') and 0 < valor < 1000:
+        return valor * 1000000
+    return valor
+
+
+def reparar_texto_mojibake(texto):
+    texto=str(texto or '')
+    for _ in range(3):
+        reparado=texto
+        for encoding in ('cp1252','latin1'):
+            try:
+                candidato=texto.encode(encoding).decode('utf-8')
+                if candidato!=texto:
+                    reparado=candidato
+                    break
+            except Exception:
+                continue
+        if reparado==texto:
+            break
+        texto=reparado
+    correcciones={
+        'Operaci?n':'Operación',
+        'Administraci?n':'Administración',
+        'Cotizaci?n':'Cotización',
+        'Configuraci?n':'Configuración',
+        'Atenci?n':'Atención',
+    }
+    for origen,destino in correcciones.items():
+        texto=texto.replace(origen,destino)
+    return texto
+
+
+def clave_texto(texto):
+    texto=reparar_texto_mojibake(texto)
+    texto=unicodedata.normalize('NFKD',texto)
+    texto=''.join(c for c in texto if not unicodedata.combining(c))
+    return re.sub(r'\s+',' ',texto).strip().upper()
+
+
+def valor_tarifa_perfil(formulario_id, producto, perfil):
+    parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
+    id_perfil=str(parametros.get('PERFIL',''))
+    try:
+        opciones=pd.read_csv('data/opciones.csv').fillna('')
+        opciones_filtradas=opciones[opciones['IdVariable'].astype(str)==id_perfil].copy()
+        opcion=opciones_filtradas[
+            opciones_filtradas['Opcion'].astype(str).map(clave_texto)==clave_texto(perfil)
+        ]
+        if not opcion.empty and float(opcion.iloc[0].get('Valor',0) or 0)>0:
+            return float(opcion.iloc[0].get('Valor',0) or 0)
+    except Exception:
+        pass
+    try:
+        tarifas=pd.read_csv('data/servicios_tarifas.csv').fillna('')
+        tarifas=tarifas[tarifas['IdFormulario'].astype(str)==str(formulario_id)].copy()
+        tarifa=tarifas[
+            (tarifas['ProductoServicio'].astype(str).map(clave_texto)==clave_texto(producto))
+            & (tarifas['Perfil'].astype(str).map(clave_texto)==clave_texto(perfil))
+        ]
+        if not tarifa.empty:
+            return float(tarifa.iloc[0]['SalarioTotal'])
+    except Exception:
+        pass
+    return 0
+
+
+def calcular_servicios_excel(formulario_id, servicios):
+    if not isinstance(servicios,list):
+        servicios=[]
+    try:
+        tarifas=pd.read_csv('data/servicios_tarifas.csv').fillna('')
+        tarifas=tarifas[tarifas['IdFormulario'].astype(str)==str(formulario_id)]
+    except Exception:
+        tarifas=pd.DataFrame(columns=['ProductoServicio','Perfil','SalarioTotal'])
+    parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
+    id_disponibilidad=str(parametros.get('DISPONIBILIDAD','2004'))
+    try:
+        opciones=pd.read_csv('data/opciones.csv').fillna('')
+        disponibilidades=opciones[opciones['IdVariable'].astype(str)==id_disponibilidad]
+    except Exception:
+        disponibilidades=pd.DataFrame(columns=['Opcion','Valor'])
+    config=cargar_config_servicios(formulario_id)
+    aplicar_disponibilidad=int(float(config.get('APLICAR_DISPONIBILIDAD',1) or 0))==1
+    items=[]
+    subtotal=0
+    categorias={}
+    detalle=[]
+    for indice,servicio in enumerate(servicios, start=1):
+        producto=str(servicio.get('producto_servicio','') or servicio.get('producto','')).strip()
+        perfil=str(servicio.get('perfil','')).strip()
+        disponibilidad=str(servicio.get('disponibilidad','')).strip()
+        try:
+            porcentaje=float(str(servicio.get('porcentaje',0) or 0).replace(',','.'))
+        except Exception:
+            porcentaje=0
+        if not producto and not perfil and porcentaje==0 and not disponibilidad:
+            continue
+        if not producto or not perfil or porcentaje<=0:
+            continue
+        salario=valor_tarifa_perfil(formulario_id, producto, perfil)
+        servicio_base=salario*(porcentaje/100)
+        recargo_pct=0
+        disp=disponibilidades[disponibilidades['Opcion'].astype(str).str.upper()==disponibilidad.upper()]
+        if aplicar_disponibilidad and not disp.empty:
+            recargo_pct=float(disp.iloc[0].get('Valor',0) or 0)
+        recargo=servicio_base*(recargo_pct/100)
+        total_linea=servicio_base+recargo
+        subtotal+=total_linea
+        producto_txt=reparar_texto_mojibake(producto)
+        perfil_txt=reparar_texto_mojibake(perfil)
+        disponibilidad_txt=reparar_texto_mojibake(disponibilidad or 'Sin disponibilidad')
+        respuesta=f"{producto_txt} | {perfil_txt} | {porcentaje:g}% | {disponibilidad_txt}"
+        items.append({
+            'pregunta':f'Servicio {indice}',
+            'respuesta':respuesta,
+            'valor':round(total_linea,2),
+            'valor_calculado':round(total_linea,2),
+            'categoria':'Servicio',
+            'salario_base':salario,
+            'recargo_disponibilidad':round(recargo,2),
+        })
+        detalle.append(f"Servicio {indice}: ${total_linea:,.0f}")
+        categorias['Servicio']=categorias.get('Servicio',0)+total_linea
+    total=aplicar_conceptos_formulario(formulario_id,items)
+    return {
+        'total_numericos':0,
+        'total_opciones':round(subtotal,2),
+        'total':round(total,2),
+        'detalle':'<br>'.join(detalle),
+        'items':items,
+        'categorias':categorias_desde_items(items),
+        'subtotal_servicios':round(subtotal,2),
+        'aplicar_disponibilidad':aplicar_disponibilidad,
+    }
+
+
+def items_visibles_pdf(items):
+    visibles=[]
+    for item in items:
+        respuesta=str(item.get('respuesta','')).strip()
+        categoria=str(item.get('categoria','')).strip().lower()
+        if respuesta in ('','0','None','null'):
+            continue
+        if categoria=='configuracion' or respuesta.lower()=='configuracion':
+            continue
+        visibles.append(item)
+    return visibles
+
+
+def aplicar_conceptos_formulario(formulario_id, items):
+    try:
+        cfg=pd.read_csv('data/configuracion_formularios.csv').fillna('')
+        cfg=cfg[cfg['id_formulario'].astype(str)==str(formulario_id)]
+    except Exception:
+        cfg=pd.DataFrame()
+    conceptos_fijos=[]
+    if not cfg.empty:
+        for _,c in cfg.iterrows():
+            if int(float(c.get('activo',1) or 0))==1 and not str(c.get('tipo','')).upper().startswith('POR'):
+                conceptos_fijos.append(c)
+    subtotal=0
+    for item in items:
+        valor_real=float(item.get('valor',0) or 0)
+        valor_calculado=valor_real
+        for _,c in cfg.iterrows():
+            if int(float(c.get('activo',1) or 0))!=1:
+                continue
+            if str(c.get('tipo','')).upper().startswith('POR'):
+                valor_calculado += valor_real * (float(c.get('valor',0) or 0)/100)
+        item['valor_calculado']=round(valor_calculado,2)
+        subtotal += valor_calculado
+    total=subtotal
+    if subtotal>0:
+        for c in conceptos_fijos:
+            valor_fijo=float(c.get('valor',0) or 0)
+            total += valor_fijo
+            items.append({
+                'pregunta':str(c.get('concepto','Concepto fijo')),
+                'respuesta':'Valor fijo',
+                'valor':valor_fijo,
+                'valor_calculado':valor_fijo,
+                'categoria':'Configuracion'
+            })
+    return round(total,2)
+
+
+def categorias_desde_items(items):
+    categorias={}
+    for item in items:
+        categoria=str(item.get('categoria','General'))
+        valor=float(item.get('valor_calculado',item.get('valor',0)) or 0)
+        categorias[categoria]=categorias.get(categoria,0)+valor
+    return {k:round(v,2) for k,v in categorias.items()}
+
+
+def valor_respuesta_para_calculo(id_variable, respuestas, opciones):
+    clave=str(int(float(id_variable)))
+    respuesta=respuestas.get(clave,'')
+    if str(respuesta).strip()=='':
+        return 0.0
+    try:
+        coincidencia=opciones[
+            (opciones['IdVariable'].astype(str)==clave)
+            & (opciones['Opcion'].astype(str).str.strip().str.upper()==str(respuesta).strip().upper())
+        ]
+        if not coincidencia.empty:
+            return numero_desde_texto(coincidencia.iloc[0].get('Valor',0),0)
+    except Exception:
+        pass
+    return numero_desde_texto(respuesta,0)
+
+
+def ids_operandos_calculados(variables):
+    ids=set()
+    try:
+        for _,v in variables.iterrows():
+            if str(v.get('Tipo','')).upper()!='CALCULADA':
+                continue
+            operacion=str(v.get('Operacion','')).upper()
+            if operacion not in ('FIJO','SUMAR','MULTIPLICAR','PORCENTAJE'):
+                continue
+            operandos=cargar_operandos_calculo(int(float(v.get('IdVariable',0) or 0)))
+            for _,op in operandos.iterrows():
+                if str(op.get('IdVariable','')).strip():
+                    ids.add(str(int(float(op.get('IdVariable')))))
+    except Exception:
+        pass
+    return ids
+
+
+def calcular_calculada_generica(formulario_id, pregunta, respuestas, opciones):
+    vid=int(float(pregunta.get('IdVariable',0) or 0))
+    operacion=str(pregunta.get('Operacion','')).upper()
+    config=cargar_config_calculo(formulario_id,operacion,vid)
+    operandos=cargar_operandos_calculo(vid)
+    valores=[]
+    bases=[]
+    porcentajes=[]
+    for _,op in operandos.iterrows():
+        id_variable=op.get('IdVariable','')
+        if str(id_variable).strip()=='':
+            continue
+        valor=valor_respuesta_para_calculo(id_variable,respuestas,opciones)
+        rol=str(op.get('Rol','BASE')).strip().upper() or 'BASE'
+        valores.append(valor)
+        if rol=='PORCENTAJE':
+            porcentajes.append(valor)
+        else:
+            bases.append(valor)
+    if operacion=='FIJO':
+        total=valores[0] if valores else numero_desde_texto(config.get('VALOR_CONSTANTE',0),0)
+    elif operacion=='SUMAR':
+        total=sum(valores)+numero_desde_texto(config.get('AJUSTE',0),0)
+    elif operacion=='MULTIPLICAR':
+        if valores:
+            total=1
+            for valor in valores:
+                total*=valor
+        else:
+            total=0
+        total*=numero_desde_texto(config.get('FACTOR',1),1)
+    elif operacion=='PORCENTAJE':
+        base=sum(bases)
+        porcentaje=sum(porcentajes) if porcentajes else numero_desde_texto(config.get('PORCENTAJE_FIJO',0),0)
+        total=base*(porcentaje/100)
+    else:
+        total=0
+    return round(total,2)
+
 @app.route('/')
 def index():
     return redirect('/login')
 
 @app.route('/home')
+@login_required
 def home():
     if 'idusuario' not in session:
         return redirect('/login')
@@ -91,9 +766,10 @@ def home():
     for _,v in variables.iterrows():
         vid=int(v['IdVariable'])
         tipo=str(v.get('Tipo','LISTA')).upper()
+        if not pregunta_visible(v) or tipo=='CALCULADA':
+            continue
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
         preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
-        # V135 dependency metadata
         
     from collections import defaultdict
     categorias=defaultdict(list)
@@ -103,6 +779,7 @@ def home():
     return render_template('index.html',preguntas=preguntas,categorias=dict(categorias),formularios=formularios_menu.to_dict('records'))
 
 @app.route('/cotizaciones')
+@login_required
 def cotizaciones():
     if not auth(): return redirect('/login')
     f='data/cotizaciones.csv'
@@ -131,6 +808,7 @@ def cotizaciones():
     </div></div></body></html>'''
 
 @app.route('/administracion')
+@admin_required
 def administracion():
     
     if not auth():
@@ -138,9 +816,11 @@ def administracion():
     if not es_admin():
         return 'Acceso denegado. Solo Administradores.',403
     if not auth(): return redirect('/login')
-    return pd.read_csv('data/usuarios.csv').to_html(index=False)
+    usuarios=pd.read_csv('data/usuarios.csv').drop(columns=['Clave','clave'],errors='ignore')
+    return usuarios.to_html(index=False)
 
 @app.route('/cuestionario_admin',methods=['GET','POST'])
+@admin_required
 def cuestionario_admin():
     
     if not auth():
@@ -153,6 +833,8 @@ def cuestionario_admin():
     
     f='data/variables.csv'
     df=pd.read_csv(f)
+    if 'Visible' not in df.columns:
+        df['Visible']=1
     formularios=pd.read_csv('data/formularios.csv').fillna('').to_dict('records')
     if formulario_id and 'IdFormulario' in df.columns:
         try:
@@ -161,7 +843,11 @@ def cuestionario_admin():
             pass
     if request.method=='POST':
         nid=(df['IdVariable'].max()+1) if len(df)>0 else 1
-        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':request.form.get('factor',0),'Estado':'Activo'}
+        try:
+            factor=float(request.form.get('factor',0) or 0)
+        except Exception:
+            factor=0
+        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':request.form.get('visible',1)}
         df.to_csv(f,index=False)
         try:
             opf='data/opciones.csv'
@@ -174,8 +860,22 @@ def cuestionario_admin():
             pass
     rows=''
     for _,r in df.iterrows():
-        tipo=r.get('Tipo','LISTA'); icon='' if str(tipo).upper()=='NUMERO' else f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-id='{r["IdVariable"]}' data-bs-toggle='modal' data-bs-target='#opcionesModal'>⚙️</button>"; rows += f"<tr><td>{r['IdVariable']}</td><td>{r['Categoria']}</td><td>{r['Variable']}</td><td>{r.get('Tipo','')}</td><td><button class='btn btn-warning btn-sm' onclick=\"editar({r['IdVariable']},'{r['Categoria']}','{r['Variable']}','{r.get('Tipo','LISTA')}','{r.get('Operacion','FIJO')}','{r.get('Factor',0)}')\">✏️</button> <a class='btn btn-danger btn-sm' href='/pregunta_eliminar/{r['IdVariable']}'>🗑️</a> {icon}</td></tr>"
-    tabla=f"<table class='table'><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Acciones</th></tr>{rows}</table>"
+        pid=int(r['IdVariable'])
+        tipo=str(r.get('Tipo','LISTA'))
+        operacion=str(r.get('Operacion','FIJO'))
+        if tipo.upper()=='NUMERO':
+            icon=''
+        elif tipo.upper()=='CALCULADA':
+            icon=f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-url='/calculada_config_admin/{pid}'>Configurar Calculo</button>"
+        else:
+            icon=f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-id='{pid}' data-tipo='{escape(tipo)}' data-operacion='{escape(operacion)}'>Opciones</button>"
+        visible=str(r.get('Visible',1))
+        argumentos=','.join((str(pid),json.dumps(str(r.get('Categoria',''))),json.dumps(str(r.get('Variable',''))),json.dumps(tipo),json.dumps(str(r.get('Operacion','FIJO'))),json.dumps(float(r.get('Factor',0) or 0)),json.dumps(visible)))
+        onclick=escape(f'editar({argumentos})')
+        token=escape(csrf_token())
+        estado_visible='Visible' if pregunta_visible(r) else 'Invisible'
+        rows += f"<tr><td>{pid}</td><td>{escape(str(r.get('Categoria','')))}</td><td>{escape(str(r.get('Variable','')))}</td><td>{escape(tipo)}</td><td>{estado_visible}</td><td><button class='btn btn-warning btn-sm' onclick='{onclick}'>Editar</button> <form style='display:inline' method='post' action='/pregunta_eliminar/{pid}'><input type='hidden' name='_csrf_token' value='{token}'><button class='btn btn-danger btn-sm'>Eliminar</button></form> {icon}</td></tr>"
+    tabla=f"<table class='table'><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Acciones</th></tr>{rows}</table>"
     formularios=[]
     try:
         formularios=pd.read_csv('data/formularios.csv').fillna('').to_dict('records')
@@ -184,6 +884,7 @@ def cuestionario_admin():
     try:
         usuarios=pd.read_csv('data/usuarios.csv').fillna('')
         usuarios.columns=usuarios.columns.str.strip().str.lower()
+        usuarios=usuarios.drop(columns=['clave'],errors='ignore')
         usuarios=usuarios.to_dict('records')
         try:
             uf=pd.read_csv('data/usuarios_formularios.csv').fillna('')
@@ -212,6 +913,7 @@ def cuestionario_admin():
             return 0
         return 0
 
+    cotizaciones_labels,cotizaciones_datasets=cotizaciones_por_mes_usuario()
     dashboard={
         'usuarios': contar_csv('data/usuarios.csv'),
         'formularios': contar_csv('data/formularios.csv'),
@@ -219,8 +921,22 @@ def cuestionario_admin():
             'data/cotizaciones.csv',
             engine='python',
             on_bad_lines='skip'
-        )
+        ),
+        'cotizaciones_labels': cotizaciones_labels,
+        'cotizaciones_datasets': cotizaciones_datasets
     }
+    rangos_por_pregunta={}
+    try:
+        rangos_df=pd.read_csv('data/rangos_tickets.csv').fillna('')
+        for _,rango in rangos_df.iterrows():
+            id_pregunta=str(int(float(rango.get('IdPregunta',0) or 0)))
+            rangos_por_pregunta.setdefault(id_pregunta,[]).append({
+                'desde':str(rango.get('Desde','')),
+                'hasta':str(rango.get('Hasta','')),
+                'valor':str(rango.get('Valor','')),
+            })
+    except Exception:
+        rangos_por_pregunta={}
     return render_template(
         'cuestionario_admin.html',
         vista=vista,
@@ -229,12 +945,14 @@ def cuestionario_admin():
         tabla_cotizaciones=tabla_cotizaciones,
         formulario_id=formulario_id,
         formularios=formularios,
-        usuarios=usuarios
+        usuarios=usuarios,
+        rangos_por_pregunta=rangos_por_pregunta
     )
 
 
 
-@app.route('/pregunta_eliminar/<int:pid>')
+@app.route('/pregunta_eliminar/<int:pid>', methods=['POST'])
+@admin_required
 def pregunta_eliminar(pid):
     if not auth(): return redirect('/login')
     df=pd.read_csv('data/variables.csv')
@@ -245,20 +963,32 @@ def pregunta_eliminar(pid):
         op=op[op['IdVariable']!=pid]
         op.to_csv('data/opciones.csv',index=False)
     except: pass
+    return jsonify({'ok':True})
 
 
 
 @app.route('/opciones_admin/<int:vid>', methods=['GET','POST'])
+@admin_required
 def opciones_admin(vid):
+    if pregunta_es_calculo_servicios(vid):
+        fid=formulario_id_por_pregunta(vid)
+        return redirect(f'/servicios_config_admin/{fid}')
     if request.method=='POST':
         op=pd.read_csv('data/opciones.csv')
-        op.loc[len(op)]={'IdVariable':vid,'Opcion':request.form['opcion'],'Valor':float(request.form.get('valor',0) or 0)}
+        valor=normalizar_valor_perfil(vid,float(request.form.get('valor',0) or 0))
+        op.loc[len(op)]={'IdVariable':vid,'Opcion':request.form['opcion'],'Valor':valor}
         op.to_csv('data/opciones.csv',index=False)
+        sincronizar_valor_tarifa_perfil(vid,request.form['opcion'],valor)
     op=pd.read_csv('data/opciones.csv')
     ops=op[op['IdVariable']==vid]
     rows=''
     for _,r in ops.iterrows():
-        rows += f"<tr><td>{r['Opcion']}</td><td>{r['Valor']}</td><td><form style='display:inline' method='post' action='/opcion_editar/{vid}/{r['Opcion']}'><input name='opcion' value='{r['Opcion']}'><input name='valor' value='{r['Valor']}' type='number'><button class='btn btn-upd'>✏️ Actualizar</button></form> <a href='/opcion_eliminar/{vid}/{r['Opcion']}' class='btn-del'>🗑️ Eliminar</a></td></tr>"
+        opcion_texto=str(r['Opcion'])
+        opcion_url=quote(opcion_texto,safe='')
+        opcion_html=escape(opcion_texto)
+        valor_html=escape(str(r['Valor']))
+        token=escape(csrf_token())
+        rows += f"<tr><td>{opcion_html}</td><td>{valor_html}</td><td><form style='display:inline' method='post' action='/opcion_editar/{vid}/{opcion_url}'><input type='hidden' name='_csrf_token' value='{token}'><input name='opcion' value='{opcion_html}'><input name='valor' value='{valor_html}' type='number'><button class='btn btn-upd'>Actualizar</button></form> <form style='display:inline' method='post' action='/opcion_eliminar/{vid}/{opcion_url}'><input type='hidden' name='_csrf_token' value='{token}'><button class='btn-del'>Eliminar</button></form></td></tr>"
     return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
 <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 <style>
@@ -275,22 +1005,274 @@ body{{background:#f4f7fb;padding:20px;font-family:Segoe UI}}
 input{{border-radius:8px!important}}
 </style></head><body>
 <div class='card'>
-<div class='header'>⚙️ Opciones {vid}</div>
+<div class='header'>Opciones {vid}</div>
 <div class='card-body'>
 <form method='post' class='row g-2 mb-3'>
+<input type='hidden' name='_csrf_token' value='{escape(csrf_token())}'>
 <div class='col'><input class='form-control' name='opcion' placeholder='Respuesta'></div>
 <div class='col'><input class='form-control' name='valor' type='number' placeholder='Valor'></div>
-<div class='col-auto'><button class='btn btn-add'>➕ Agregar</button></div>
+<div class='col-auto'><button class='btn btn-add'>Agregar</button></div>
 </form>
 <table class='table table-hover'><thead><tr><th>Respuesta</th><th>Valor</th><th>Acciones</th></tr></thead><tbody>{rows}</tbody></table>
 </div></div></body></html>"""
 
 
+@app.route('/calculada_config_admin/<int:vid>')
+@admin_required
+def calculada_config_admin(vid):
+    pregunta=datos_pregunta_calculada(vid)
+    operacion=str(pregunta.get('operacion','')).upper()
+    operaciones=cargar_operaciones_calculadas()
+    op_row=operaciones[operaciones['Operacion'].astype(str).str.upper()==operacion]
+    if op_row.empty:
+        return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+</head><body class='p-4'><div class='alert alert-warning'>La pregunta calculada {vid} no tiene una operacion definida en calculos_operaciones.csv.</div></body></html>"""
+    op=op_row.iloc[0]
+    formulario_id=int(pregunta.get('formulario_id',0) or formulario_id_por_pregunta(vid))
+    variables=pd.read_csv('data/variables.csv').fillna('')
+    variables=variables[variables['IdFormulario'].astype(str)==str(formulario_id)]
+    opciones_preguntas=''.join(
+        f"<option value='{int(float(v.get('IdVariable',0) or 0))}' {{selected_{int(float(v.get('IdVariable',0) or 0))}}}>{escape(str(v.get('IdVariable','')))} - {escape(str(v.get('Variable','')))} ({escape(str(v.get('Tipo','')))} / {escape(str(v.get('Operacion','')))} )</option>"
+        for _,v in variables.iterrows()
+    )
+    parametros_actuales=cargar_parametros_calculo(formulario_id,operacion,vid)
+    defs_param=cargar_def_parametros_calculo(operacion)
+    filas_param=''
+    for _,defp in defs_param.iterrows():
+        parametro=str(defp.get('Parametro','')).upper()
+        actual=str(parametros_actuales.get(parametro,''))
+        opciones=opciones_preguntas.replace(f"{{selected_{actual}}}","selected")
+        opciones=re.sub(r"\s*\{selected_\d+\}", "", opciones)
+        requerido='Si' if int(float(defp.get('Requerido',0) or 0))==1 else 'No'
+        filas_param += f"<tr><td><b>{escape(str(defp.get('Etiqueta',parametro)))}</b><br><small>{escape(parametro)}</small></td><td>{escape(str(defp.get('Descripcion','')))}</td><td>{requerido}</td><td><select class='form-control' name='param_{escape(parametro)}'><option value=''>Seleccione</option>{opciones}</select></td></tr>"
+    defs_cfg=cargar_def_config_calculo(operacion)
+    config_actual=cargar_config_calculo(formulario_id,operacion,vid)
+    campos_cfg=''
+    for _,defc in defs_cfg.iterrows():
+        parametro=str(defc.get('Parametro','')).upper()
+        etiqueta=escape(str(defc.get('Etiqueta',parametro)))
+        tipo=str(defc.get('Tipo','')).upper()
+        actual=config_actual.get(parametro,float(defc.get('ValorDefault',0) or 0))
+        if tipo=='BOOLEANO':
+            si='selected' if int(float(actual or 0))==1 else ''
+            no='selected' if int(float(actual or 0))!=1 else ''
+            campo=f"<select class='form-control' name='cfg_{escape(parametro)}'><option value='1' {si}>SI</option><option value='0' {no}>NO</option></select>"
+        else:
+            campo=f"<input class='form-control' name='cfg_{escape(parametro)}' type='number' step='0.01' value='{escape(str(actual))}'>"
+        campos_cfg += f"<div class='col-md-4'><label>{etiqueta}</label>{campo}<small>{escape(str(defc.get('Descripcion','')))}</small></div>"
+    operandos_html=''
+    if int(float(op.get('UsaOperandos',0) or 0))==1:
+        operandos=cargar_operandos_calculo(vid)
+        def select_pregunta(actual=''):
+            opciones=[]
+            for _,vp in variables.iterrows():
+                idp=str(int(float(vp.get('IdVariable',0) or 0)))
+                if idp==str(vid):
+                    continue
+                selected='selected' if idp==str(actual) else ''
+                opciones.append(f"<option value='{idp}' {selected}>{escape(idp)} - {escape(str(vp.get('Variable','')))} ({escape(str(vp.get('Tipo','')))} / {escape(str(vp.get('Operacion','')))})</option>")
+            return "<select class='form-control' name='operand_id'><option value=''>Seleccione</option>"+''.join(opciones)+"</select>"
+        def select_rol(actual='BASE'):
+            actual=str(actual or 'BASE').upper()
+            base='selected' if actual!='PORCENTAJE' else ''
+            pct='selected' if actual=='PORCENTAJE' else ''
+            return f"<select class='form-control' name='operand_rol'><option value='BASE' {base}>BASE</option><option value='PORCENTAJE' {pct}>PORCENTAJE</option></select>"
+        filas_operandos=''
+        for _,operand in operandos.iterrows():
+            filas_operandos += f"<tr><td>{select_pregunta(operand.get('IdVariable',''))}</td><td>{select_rol(operand.get('Rol','BASE'))}</td></tr>"
+        filas_operandos += f"<tr><td>{select_pregunta('')}</td><td>{select_rol('BASE')}</td></tr>"
+        operandos_html=f"""<hr><h5>Preguntas origen</h5>
+<p class='text-muted mb-2'>Agregue una o varias preguntas para que esta calculada las use como operandos. En PORCENTAJE marque como BASE las preguntas que reciben el porcentaje y como PORCENTAJE las preguntas que contienen el porcentaje.</p>
+<table class='table'><thead><tr><th>Pregunta origen</th><th>Rol</th></tr></thead><tbody>{filas_operandos}</tbody></table>"""
+    rangos_html=''
+    if int(float(op.get('UsaRangos',0) or 0))==1:
+        try:
+            rangos=pd.read_csv('data/rangos_tickets.csv').fillna('')
+            rangos=rangos[rangos['IdPregunta'].astype(str)==str(vid)]
+        except Exception:
+            rangos=pd.DataFrame(columns=['Desde','Hasta','Valor'])
+        filas=''.join(
+            f"<tr><td><input class='form-control' name='desde' value='{escape(str(r.get('Desde','')))}'></td><td><input class='form-control' name='hasta' value='{escape(str(r.get('Hasta','')))}'></td><td><input class='form-control' name='valor' value='{escape(str(r.get('Valor','')))}'></td></tr>"
+            for _,r in rangos.iterrows()
+        )
+        rangos_html=f"<hr><h5>Rangos</h5><table class='table'><thead><tr><th>Desde</th><th>Hasta</th><th>Valor Base</th></tr></thead><tbody>{filas}<tr><td><input class='form-control' name='desde' placeholder='Desde'></td><td><input class='form-control' name='hasta' placeholder='Hasta'></td><td><input class='form-control' name='valor' placeholder='Valor Base'></td></tr></tbody></table>"
+    token=escape(csrf_token())
+    return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+<style>body{{padding:20px;background:#f8fafc;font-family:Segoe UI}} .card{{border:none;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}} .header{{background:#0d6efd;color:#fff;padding:14px 18px;border-radius:16px 16px 0 0;font-weight:700;font-size:22px}} small{{color:#667085}}</style>
+</head><body><div class='card'><div class='header'>Configurar pregunta calculada {vid}</div><div class='card-body'>
+<p><b>Pregunta:</b> {escape(pregunta.get('pregunta',''))}</p>
+<p><b>Operacion:</b> {escape(operacion)}</p>
+<p><b>Logica:</b> {escape(str(op.get('Descripcion','')))}</p>
+<p><b>Formula:</b> {escape(str(op.get('Formula','')))}</p>
+<form method='post' action='/calculada_config_admin/{vid}/guardar'>
+<input type='hidden' name='_csrf_token' value='{token}'>
+<h5>Parametros de entrada y salida</h5>
+<table class='table'><thead><tr><th>Parametro</th><th>Uso logico</th><th>Requerido</th><th>Pregunta asociada</th></tr></thead><tbody>{filas_param}</tbody></table>
+{('<hr><h5>Configuracion de la operacion</h5><div class=\"row g-2\">'+campos_cfg+'</div>') if campos_cfg else ''}
+{operandos_html}
+{rangos_html}
+<button class='btn btn-primary mt-3'>Guardar Configuracion</button>
+</form>
+</div></div></body></html>"""
+
+
+@app.route('/calculada_config_admin/<int:vid>/rangos', methods=['POST'])
+@admin_required
+def calculada_config_admin_guardar_rangos(vid):
+    desde=request.form.getlist('desde')
+    hasta=request.form.getlist('hasta')
+    valor=request.form.getlist('valor')
+    nuevos=[]
+    for d,h,v in zip(desde,hasta,valor):
+        if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
+            continue
+        nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v)})
+    path='data/rangos_tickets.csv'
+    actual=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+    actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
+    if nuevos:
+        actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
+    actual.to_csv(path,index=False)
+    return redirect(f'/calculada_config_admin/{vid}')
+
+
+@app.route('/calculada_config_admin/<int:vid>/guardar', methods=['POST'])
+@admin_required
+def calculada_config_admin_guardar(vid):
+    pregunta=datos_pregunta_calculada(vid)
+    operacion=str(pregunta.get('operacion','')).upper()
+    formulario_id=int(pregunta.get('formulario_id',0) or formulario_id_por_pregunta(vid))
+
+    defs_param=cargar_def_parametros_calculo(operacion)
+    params_path='data/calculos_parametros.csv'
+    params=pd.read_csv(params_path).fillna('') if os.path.exists(params_path) else pd.DataFrame(columns=['IdFormulario','IdPregunta','Operacion','Parametro','IdVariable'])
+    if 'IdPregunta' not in params.columns:
+        params['IdPregunta']=''
+    params=params[~((params['IdFormulario'].astype(str)==str(formulario_id)) & (params['Operacion'].astype(str).str.upper()==operacion) & (params['IdPregunta'].astype(str)==str(vid)))]
+    for _,defp in defs_param.iterrows():
+        parametro=str(defp.get('Parametro','')).upper()
+        id_variable=request.form.get(f'param_{parametro}','')
+        if str(id_variable).strip():
+            params.loc[len(params)]={'IdFormulario':formulario_id,'IdPregunta':vid,'Operacion':operacion,'Parametro':parametro,'IdVariable':int(float(id_variable))}
+    params.to_csv(params_path,index=False)
+
+    defs_cfg=cargar_def_config_calculo(operacion)
+    valores_cfg={}
+    for _,defc in defs_cfg.iterrows():
+        parametro=str(defc.get('Parametro','')).upper()
+        valores_cfg[parametro]=float(request.form.get(f'cfg_{parametro}',defc.get('ValorDefault',0)) or 0)
+    if valores_cfg:
+        guardar_config_calculo(formulario_id,operacion,valores_cfg,vid)
+
+    op_row=cargar_operaciones_calculadas()
+    op_row=op_row[op_row['Operacion'].astype(str).str.upper()==operacion]
+    usa_operandos=not op_row.empty and int(float(op_row.iloc[0].get('UsaOperandos',0) or 0))==1
+    if usa_operandos:
+        guardar_operandos_calculo(vid,request.form.getlist('operand_id'),request.form.getlist('operand_rol'))
+    usa_rangos=not op_row.empty and int(float(op_row.iloc[0].get('UsaRangos',0) or 0))==1
+    if usa_rangos:
+        desde=request.form.getlist('desde')
+        hasta=request.form.getlist('hasta')
+        valor=request.form.getlist('valor')
+        nuevos=[]
+        for d,h,v in zip(desde,hasta,valor):
+            if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
+                continue
+            nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v)})
+        path='data/rangos_tickets.csv'
+        actual=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+        actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
+        if nuevos:
+            actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
+        actual.to_csv(path,index=False)
+
+    return redirect(f'/calculada_config_admin/{vid}')
+
+
+@app.route('/servicios_config_admin/<int:fid>', methods=['GET','POST'])
+@admin_required
+def servicios_config_admin(fid):
+    path='data/servicios_config.csv'
+    if request.method=='POST':
+        cfg=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdFormulario','Parametro','Valor'])
+        valor=float(request.form.get('APLICAR_DISPONIBILIDAD',1) or 0)
+        mask=(cfg['IdFormulario'].astype(str)==str(fid)) & (cfg['Parametro'].astype(str)=='APLICAR_DISPONIBILIDAD')
+        if mask.any():
+            cfg.loc[mask,'Valor']=valor
+        else:
+            cfg.loc[len(cfg)]={'IdFormulario':fid,'Parametro':'APLICAR_DISPONIBILIDAD','Valor':valor}
+        cfg.to_csv(path,index=False)
+
+        params_path='data/calculos_parametros.csv'
+        params=pd.read_csv(params_path).fillna('')
+        if 'IdPregunta' not in params.columns:
+            params['IdPregunta']=''
+        params=params[~((params['IdFormulario'].astype(str)==str(fid)) & (params['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL'))]
+        for parametro in ['PRODUCTO_SERVICIO','PERFIL','PORCENTAJE','DISPONIBILIDAD','TOTAL_SERVICIO']:
+            id_variable=int(float(request.form.get(parametro,0) or 0))
+            params.loc[len(params)]={'IdFormulario':fid,'IdPregunta':int(request.form.get('TOTAL_SERVICIO',0) or 0),'Operacion':'SERVICIOS_EXCEL','Parametro':parametro,'IdVariable':id_variable}
+        params.to_csv(params_path,index=False)
+    config=cargar_config_servicios(fid)
+    params=cargar_parametros_calculo(fid,'SERVICIOS_EXCEL')
+    token=escape(csrf_token())
+    def input_param(nombre):
+        return f"<div class='col-md-4'><label>{escape(nombre)}</label><input class='form-control' name='{escape(nombre)}' type='number' value='{escape(str(params.get(nombre,'')))}'></div>"
+    campos=''.join(input_param(nombre) for nombre in ['PRODUCTO_SERVICIO','PERFIL','PORCENTAJE','DISPONIBILIDAD','TOTAL_SERVICIO'])
+    aplicar=int(float(config.get('APLICAR_DISPONIBILIDAD',1) or 0))
+    seleccionado_si='selected' if aplicar==1 else ''
+    seleccionado_no='selected' if aplicar!=1 else ''
+    return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+<style>body{{padding:20px;background:#f8fafc;font-family:Segoe UI}} .card{{border:none;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}} .header{{background:#0d6efd;color:#fff;padding:14px 18px;border-radius:16px 16px 0 0;font-weight:700;font-size:22px}}</style>
+</head><body><div class='card'><div class='header'>Configurar Calculo 2005</div><div class='card-body'>
+<p><b>Logica:</b> la pregunta 2005 calcula el total de cada servicio usando las respuestas de otras preguntas asociadas por ID.</p>
+<p><b>Operacion:</b> SERVICIOS_EXCEL</p>
+<p><b>Formula:</b> Total servicio = Valor del Perfil x Porcentaje / 100. Si disponibilidad esta activa, suma recargo de disponibilidad sobre ese subtotal.</p>
+<form method='post'>
+<input type='hidden' name='_csrf_token' value='{token}'>
+<div class='row g-2'>
+{campos}
+<div class='col-md-4'><label>Aplicar disponibilidad</label><select class='form-control' name='APLICAR_DISPONIBILIDAD'><option value='1' {seleccionado_si}>SI</option><option value='0' {seleccionado_no}>NO</option></select></div>
+</div>
+<button class='btn btn-primary mt-3'>Guardar Configuracion</button>
+</form>
+</div></div></body></html>"""
+
+
+@app.route('/servicios_config_admin_pregunta/<int:vid>')
+@admin_required
+def servicios_config_admin_pregunta(vid):
+    fid=formulario_id_por_pregunta(vid)
+    if not fid:
+        return 'No se encontro el formulario asociado a esta pregunta.',404
+    return redirect(f'/servicios_config_admin/{fid}')
+
+
 @app.route('/calcular', methods=['POST'])
+@login_required
 def calcular():
-    data=request.json or {}
+    try:
+        return jsonify(calcular_cotizacion(request.json or {}))
+    except ValueError as exc:
+        return jsonify({'ok':False,'error':str(exc)}),400
+    except PermissionError:
+        return jsonify({'ok':False,'error':'Acceso denegado al formulario'}),403
+
+
+def calcular_cotizacion(data):
     respuestas=data.get('respuestas',{})
-    formulario_id=data.get('formulario_id',0)
+    try:
+        formulario_id=int(data.get('formulario_id',0))
+    except (TypeError,ValueError):
+        raise ValueError('Formulario inválido')
+    if formulario_id<=0:
+        raise ValueError('Debe seleccionar un formulario')
+    if not puede_usar_formulario(formulario_id):
+        raise PermissionError
+    if formulario_usa_servicios_excel(formulario_id) and isinstance(data.get('servicios'),list) and len(data.get('servicios',[]))>0:
+        return calcular_servicios_excel(formulario_id, data.get('servicios',[]))
     total_opciones=0; total_numericos=0; detalle=[]; items=[]; categorias={}
     opciones=pd.read_csv('data/opciones.csv')
     uid=session.get('idusuario',0)
@@ -302,10 +1284,61 @@ def calcular():
     except:
         formularios_menu=pd.DataFrame(columns=['IdFormulario','Nombre'])
     variables=pd.read_csv('data/variables.csv')
+    if 'IdFormulario' in variables.columns:
+        variables=variables[pd.to_numeric(variables['IdFormulario'],errors='coerce')==formulario_id]
+    usa_rango_tickets=any(
+        str(v.get('Tipo','')).upper()=='CALCULADA' and str(v.get('Operacion','')).upper()=='RANGO_TICKETS'
+        for _,v in variables.iterrows()
+    )
+    parametros_rango=cargar_parametros_calculo(formulario_id,'RANGO_TICKETS') if usa_rango_tickets else {}
+    ids_parametros_rango=set(str(v) for v in parametros_rango.values() if str(v).strip())
+    ids_operandos_genericos=ids_operandos_calculados(variables)
     for _,v in variables.iterrows():
         vid=str(int(v['IdVariable']))
+        tipo_ext=str(v.get('Tipo','LISTA')).upper()
+        operacion_ext=str(v.get('Operacion','')).upper()
+        if tipo_ext=='CALCULADA' and operacion_ext in ('FIJO','SUMAR','MULTIPLICAR','PORCENTAJE'):
+            valor_calc=calcular_calculada_generica(formulario_id,v,respuestas,opciones)
+            categoria=str(v.get('Categoria','General'))
+            nombre=str(v.get('Variable','Calculo'))
+            total_opciones+=valor_calc
+            detalle.append(f"{nombre}: ${valor_calc:,.0f}")
+            items.append({'pregunta':nombre,'respuesta':operacion_ext,'valor':valor_calc,'categoria':categoria})
+            categorias[categoria]=categorias.get(categoria,0)+valor_calc
+            continue
+        if tipo_ext=='CALCULADA' and operacion_ext=='RANGO_TICKETS':
+            cantidad_raw=obtener_respuesta_parametro(respuestas,parametros_rango,'CANTIDAD_TICKETS','')
+            delegada_raw=obtener_respuesta_parametro(respuestas,parametros_rango,'OPERACION_DELEGADA','')
+            if str(cantidad_raw).strip()=='' and str(delegada_raw).strip()=='':
+                continue
+            cantidad=float(cantidad_raw or 0)
+            delegada=float(delegada_raw or 0)
+            horario=obtener_respuesta_parametro(respuestas,parametros_rango,'HORARIO_ATENCION','')
+            disponibilidad=obtener_respuesta_parametro(respuestas,parametros_rango,'DISPONIBILIDAD','')
+            tickets_totales=cantidad+delegada
+            valor_unitario,tickets_cotizados=calcular_rango_tickets(
+                cantidad,
+                delegada,
+                horario,
+                disponibilidad,
+                id_pregunta=vid,
+                id_horario=parametros_rango.get('HORARIO_ATENCION'),
+                id_disponibilidad=parametros_rango.get('DISPONIBILIDAD')
+            )
+            valor_calc=tickets_cotizados*valor_unitario
+            rango_aplicado=etiqueta_rango_tickets(tickets_totales,vid)
+            total_opciones+=valor_calc
+            detalle.append(f"Tickets y Operación Delegada ingresados: {tickets_totales:g}<br>Cotización en rango {rango_aplicado}<br>Valor por ticket con características seleccionadas: ${valor_unitario:,.0f}<br>Valor mensual: ${valor_calc:,.0f}")
+            categoria=str(v.get('Categoria','General'))
+            respuesta_costos=f'{tickets_totales:g}; cotización en rango {rango_aplicado}; valor por ticket con características seleccionadas: ${valor_unitario:,.0f}'
+            items.append({'pregunta':'Tickets y Operación Delegada ingresados','respuesta':respuesta_costos,'valor':valor_calc,'categoria':categoria})
+            categorias[categoria]=categorias.get(categoria,0)+valor_calc
+            continue
         nombre=str(v['Variable'])
         tipo=str(v.get('Tipo','LISTA')).upper()
+        if (usa_rango_tickets and vid in ids_parametros_rango) or vid in ids_operandos_genericos:
+            items.append({'pregunta':nombre,'respuesta':respuestas.get(vid,''),'valor':0,'categoria':str(v.get('Categoria','General'))})
+            continue
         if tipo=='NUMERO':
             valor=float(respuestas.get(vid,0) or 0)
             op=str(v.get('Operacion','FIJO')).upper()
@@ -313,98 +1346,127 @@ def calcular():
             try:
                 factor=0 if pd.isna(factor) else float(factor)
             except: factor=0
-            res=valor if op in ('FIJO','') else (valor*factor if op=='MULTIPLICAR' else valor+factor)
-            total_numericos+=res; detalle.append(f"{nombre}: ${res:,.0f}"); items.append({'pregunta':nombre,'respuesta':valor,'valor':res}); categorias[str(v.get('Categoria','General'))]=categorias.get(str(v.get('Categoria','General')),0)+res
+            if op in ('FIJO',''):
+                res=valor
+            elif op=='MULTIPLICAR':
+                res=valor*factor
+            elif op=='PORCENTAJE':
+                res=valor*(factor/100)
+            else:
+                res=valor+factor
+            categoria=str(v.get('Categoria','General'))
+            total_numericos+=res; detalle.append(f"{nombre}: ${res:,.0f}"); items.append({'pregunta':nombre,'respuesta':valor,'valor':res,'categoria':categoria}); categorias[categoria]=categorias.get(categoria,0)+res
         else:
             resp=str(respuestas.get(vid,''))
             m=opciones[(opciones['IdVariable']==int(vid)) & (opciones['Opcion'].astype(str)==resp)]
             if not m.empty:
-                val=float(m.iloc[0].get('Valor',0)); total_opciones+=val; detalle.append(f"{nombre}: ${val:,.0f}"); items.append({'pregunta':nombre,'respuesta':resp,'valor':val}); categorias[str(v.get('Categoria','General'))]=categorias.get(str(v.get('Categoria','General')),0)+val
-    total=0
-    try:
-        cfg=pd.read_csv('data/configuracion_formularios.csv')
-        cfg=cfg[cfg['id_formulario'].astype(str)==str(formulario_id)]
-    except Exception:
-        cfg=pd.DataFrame()
-
-    for item in items:
-        valor_real=float(item.get('valor',0))
-        valor_calculado=valor_real
-
-        for _,c in cfg.iterrows():
-            if int(c.get('activo',1))!=1:
-                continue
-            if str(c.get('tipo','')).upper().startswith('POR'):
-                valor_calculado += valor_real * (float(c.get('valor',0))/100)
-            else:
-                valor_calculado += float(c.get('valor',0))
-
-        item['valor_calculado']=round(valor_calculado,2)
-        total += valor_calculado
-    return jsonify({'total_numericos':total_numericos,'total_opciones':total_opciones,'total':total,'detalle':'<br>'.join(detalle),'items':items,'categorias':categorias})
+                categoria=str(v.get('Categoria','General'))
+                val=float(m.iloc[0].get('Valor',0))
+                op=str(v.get('Operacion','FIJO')).upper()
+                if op=='PORCENTAJE':
+                    base=sum(float(item.get('valor',0) or 0) for item in items)
+                    valor_calculado=base*(val/100)
+                    total_opciones+=valor_calculado
+                    detalle.append(f"{nombre} ({resp}): {val:g}% = ${valor_calculado:,.0f}")
+                    items.append({'pregunta':nombre,'respuesta':resp,'valor':valor_calculado,'categoria':categoria,'porcentaje':val,'base_porcentaje':base})
+                    categorias[categoria]=categorias.get(categoria,0)+valor_calculado
+                else:
+                    total_opciones+=val
+                    detalle.append(f"{nombre}: ${val:,.0f}")
+                    items.append({'pregunta':nombre,'respuesta':resp,'valor':val,'categoria':categoria})
+                    categorias[categoria]=categorias.get(categoria,0)+val
+    total=aplicar_conceptos_formulario(formulario_id,items)
+    return {'total_numericos':total_numericos,'total_opciones':total_opciones,'total':round(total,2),'detalle':'<br>'.join(detalle),'items':items,'categorias':categorias_desde_items(items)}
 
 @app.route('/guardar_cotizacion', methods=['POST'])
+@login_required
 def guardar_cotizacion():
-    data=request.json or {}
+    try:
+        data=calcular_cotizacion(request.json or {})
+    except ValueError as exc:
+        return jsonify({'ok':False,'error':str(exc)}),400
+    except PermissionError:
+        return jsonify({'ok':False,'error':'Acceso denegado al formulario'}),403
     archivo='data/cotizaciones.csv'
-    registro={'fecha':datetime.now().strftime('%Y-%m-%d %H:%M:%S'), **data}
-    df=pd.DataFrame([registro])
+    registro={
+        'fecha':datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'total':data['total'],
+        'usuario':session.get('usuario',''),
+        'idusuario':session.get('idusuario',''),
+    }
     if os.path.exists(archivo):
-        df.to_csv(archivo, mode='a', index=False, header=False)
+        try:
+            existente=pd.read_csv(archivo,engine='python',on_bad_lines='skip').fillna('')
+        except Exception:
+            existente=pd.DataFrame(columns=['fecha','total','usuario','idusuario'])
+        for columna in ['fecha','total','usuario','idusuario']:
+            if columna not in existente.columns:
+                existente[columna]=''
+        df=pd.concat([existente[['fecha','total','usuario','idusuario']],pd.DataFrame([registro])],ignore_index=True)
+        df.to_csv(archivo,index=False)
     else:
+        df=pd.DataFrame([registro])
         df.to_csv(archivo, index=False)
     return jsonify({'success':True,'mensaje':'Cotización guardada correctamente'})
 
 @app.route('/generar_pdf', methods=['POST'])
+@login_required
 def generar_pdf():
-    archivo='reportes/Cotizacion_QBITECH.pdf'
-    os.makedirs('reportes',exist_ok=True)
+    try:
+        d=calcular_cotizacion(request.json or {})
+    except ValueError as exc:
+        return jsonify({'ok':False,'error':str(exc)}),400
+    except PermissionError:
+        return jsonify({'ok':False,'error':'Acceso denegado al formulario'}),403
+    archivo=io.BytesIO()
     doc=SimpleDocTemplate(archivo)
     st=getSampleStyleSheet()
-    d=request.json or {}
     elems=[]
     logo='static/img/logo_qbitech.png'
     if os.path.exists(logo):
         elems.append(Image(logo,width=180,height=60))
-    elems.append(Paragraph('COTIZACION QBITECH',st['Title']))
+    elems.append(Paragraph('COTIZACIÓN QBITECH',st['Title']))
     elems.append(Spacer(1,12))
-    items=d.get('items',[])
+    items=items_visibles_pdf(d.get('items',[]))
     if items:
-        elems.append(Paragraph('DETALLE DE LA COTIZACION',st['Heading2']))
+        elems.append(Paragraph('DETALLE DE LA COTIZACIÓN',st['Heading2']))
         elems.append(Spacer(1,12))
         categorias={}
         for item in items:
             respuesta=str(item.get('respuesta','')).strip()
-            if respuesta in ('','0','None','null'):
-                continue
-            cat=str(item.get('categoria','GENERAL'))
+            cat=reparar_texto_mojibake(item.get('categoria','GENERAL'))
             categorias.setdefault(cat,[]).append(item)
 
         for cat,lista in categorias.items():
-            elems.append(Paragraph(cat.upper(),st['Heading2']))
+            elems.append(Paragraph(str(escape(cat.upper())),st['Heading2']))
             for item in lista:
-                pregunta=str(item.get('pregunta',''))
-                respuesta=str(item.get('respuesta',''))
-                elems.append(Paragraph(f"{pregunta}: {respuesta}",st['Normal']))
+                pregunta=reparar_texto_mojibake(item.get('pregunta',''))
+                respuesta=reparar_texto_mojibake(item.get('respuesta',''))
+                elems.append(Paragraph(f"{escape(pregunta)}: {escape(respuesta)}",st['Normal']))
             elems.append(Spacer(1,8))
     else:
         detalle=str(d.get('detalle',''))
         for linea in detalle.replace('<br>','\n').split('\n'):
             linea=linea.strip()
             if linea:
-                elems.append(Paragraph(linea,st['Normal']))
+                linea=reparar_texto_mojibake(linea)
+                elems.append(Paragraph(str(escape(linea)),st['Normal']))
     elems.append(Spacer(1,12))
     total=float(d.get('total',0) or 0)
-    elems.append(Paragraph(f'TOTAL COTIZACION: ${total:,.0f}',st['Heading2']))
+    elems.append(Paragraph(f'TOTAL COTIZACIÓN ANTES DE IVA: ${total:,.0f}',st['Heading2']))
     doc.build(elems)
-    return send_file(archivo,as_attachment=True)
+    archivo.seek(0)
+    return send_file(archivo,as_attachment=True,download_name='Cotizacion_QBITECH.pdf',mimetype='application/pdf')
 
 
 
 @app.route('/pregunta_editar',methods=['POST'])
+@admin_required
 def pregunta_editar():
     if not auth(): return redirect('/login')
     df=pd.read_csv('data/variables.csv')
+    if 'Visible' not in df.columns:
+        df['Visible']=1
     pid=request.form.get('id','').strip()
     if pid:
         pid=int(pid)
@@ -417,12 +1479,18 @@ def pregunta_editar():
             df.loc[idx,'Factor']=float(request.form.get('factor',0) or 0)
         except:
             df.loc[idx,'Factor']=0
+        df.loc[idx,'Visible']=int(request.form.get('visible',1) or 0)
     else:
         nid=(df['IdVariable'].max()+1) if len(df)>0 else 1
-        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':request.form.get('factor',0),'Estado':'Activo'}
+        try:
+            factor=float(request.form.get('factor',0) or 0)
+        except Exception:
+            factor=0
+        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':int(request.form.get('visible',1) or 0)}
     df.to_csv('data/variables.csv',index=False)
     if request.headers.get('X-Requested-With')=='XMLHttpRequest':
         return jsonify({'ok':True,'mensaje':'Pregunta guardada correctamente'})
+    return redirect('/cuestionario_admin?vista=preguntas')
 
 
 from flask import render_template_string
@@ -432,24 +1500,29 @@ def admin_login():
     if request.method=='POST':
         u=request.form.get('usuario','')
         c=request.form.get('clave','')
-        df=pd.read_csv('data/usuarios.csv')
-        df.columns=df.columns.str.strip().str.lower()
-        ok=df[(df['usuario'].astype(str)==u) & (df['clave'].astype(str)==c)]
-        if not ok.empty:
+        usuario=_authenticate_user(u,c)
+        if usuario is not None:
+            session.clear()
             session['usuario']=u
-            session['rol']=str(ok.iloc[0].get('rol', ok.iloc[0].get('Rol','')))
+            session['idusuario']=int(usuario.get('idusuario',0) or 0)
+            session['rol']=str(usuario.get('rol',''))
             if str(session.get('rol','')).strip().lower()!='administrador':
+                session.clear()
                 return render_template('admin_login.html', error='Acceso permitido únicamente para Administradores')
+            csrf_token()
             return redirect('/cuestionario_admin?vista=dashboard')
         return render_template('admin_login.html', error='Usuario o contraseña incorrectos')
     return render_template('admin_login.html')
 
 @app.route('/usuarios')
+@admin_required
 def usuarios():
     if not auth(): return redirect('/login')
-    return pd.read_csv('data/usuarios.csv').to_html(index=False)
+    usuarios=pd.read_csv('data/usuarios.csv').drop(columns=['Clave','clave'],errors='ignore')
+    return usuarios.to_html(index=False)
 
 @app.route('/reportes')
+@login_required
 def reportes():
     if not auth(): return redirect('/login')
     return '<h2>Reportes Enterprise</h2>'
@@ -459,7 +1532,8 @@ def reportes():
 
 
 
-@app.route('/opcion_eliminar/<int:vid>/<opcion>')
+@app.route('/opcion_eliminar/<int:vid>/<opcion>', methods=['POST'])
+@admin_required
 def opcion_eliminar(vid, opcion):
     op=pd.read_csv('data/opciones.csv')
     op=op[~((op['IdVariable']==vid) & (op['Opcion'].astype(str)==opcion))]
@@ -467,32 +1541,26 @@ def opcion_eliminar(vid, opcion):
     return redirect(f'/opciones_admin/{vid}')
 
 @app.route('/opcion_editar/<int:vid>/<opcion>', methods=['POST'])
+@admin_required
 def opcion_editar(vid, opcion):
     op=pd.read_csv('data/opciones.csv')
     idx=op[(op['IdVariable']==vid) & (op['Opcion'].astype(str)==opcion)].index
     if len(idx):
+        valor=normalizar_valor_perfil(vid,float(request.form.get('valor',0) or 0))
         op.loc[idx[0],'Opcion']=request.form['opcion']
-        op.loc[idx[0],'Valor']=float(request.form.get('valor',0) or 0)
+        op.loc[idx[0],'Valor']=valor
         op.to_csv('data/opciones.csv',index=False)
+        sincronizar_valor_tarifa_perfil(vid,request.form['opcion'],valor)
     return redirect(f'/opciones_admin/{vid}')
 
 
 # moved to end
 
-# TIPO_LISTA_NUMERO_V13: preguntas LISTA usan opciones, NUMERO usan operacion/factor
 
 
-# V19_DYNAMIC_ENGINE_ENABLED
-# Base para cálculo dinámico LISTA / NUMERO
 
 
-# V21_FIX_FIJO_NAN
-# Ajuste solicitado:
-# - Operacion FIJO ignora factor
-# - NaN debe tratarse como 0
-# - Preparación para resumen dinámico
 
-# V37 PDF adjustments
 
 
 def cargar_formularios():
@@ -502,6 +1570,7 @@ def cargar_formularios():
         return pd.DataFrame(columns=['IdFormulario','Nombre'])
 
 @app.route('/formulario/<int:id_formulario>')
+@login_required
 def formulario(id_formulario):
     if not auth(): return redirect('/login')
     uid=session.get('idusuario',0)
@@ -520,22 +1589,43 @@ def formulario(id_formulario):
     for _,v in variables.iterrows():
         vid=int(v['IdVariable'])
         tipo=str(v.get('Tipo','LISTA')).upper()
+        if not pregunta_visible(v) or tipo=='CALCULADA':
+            continue
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
         preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
-        # V135 dependency metadata
         
     from collections import defaultdict
     categorias=defaultdict(list)
     for p in preguntas:
         row=variables[variables['IdVariable']==p['id']].iloc[0]
         categorias[str(row['Categoria'])].append(p)
-    if id_formulario not in ids:
+    if not puede_usar_formulario(id_formulario):
         return 'Acceso denegado',403
     formularios=formularios_menu.to_dict('records')
-    return render_template('index.html',preguntas=preguntas,categorias=dict(categorias),formularios=formularios,formulario_actual=id_formulario)
+    servicios_excel=formulario_modo_servicios_excel(id_formulario)
+    catalogo_servicios=cargar_catalogo_servicios(id_formulario) if servicios_excel else {}
+    formulario_nombre=''
+    try:
+        todos_formularios=pd.read_csv('data/formularios.csv').fillna('')
+        fila_form=todos_formularios[todos_formularios['IdFormulario'].astype(str)==str(id_formulario)]
+        if not fila_form.empty:
+            formulario_nombre=str(fila_form.iloc[0].get('Nombre',''))
+    except Exception:
+        pass
+    return render_template(
+        'index.html',
+        preguntas=preguntas,
+        categorias=dict(categorias),
+        formularios=formularios,
+        formulario_actual=id_formulario,
+        formulario_nombre=formulario_nombre,
+        servicios_excel=servicios_excel,
+        catalogo_servicios=catalogo_servicios
+    )
 
 
 @app.route('/formularios')
+@admin_required
 def formularios_admin():
     try:
         df=pd.read_csv('data/formularios.csv')
@@ -545,10 +1635,12 @@ def formularios_admin():
         return str(e)
 
 @app.route('/nuevo_formulario')
+@admin_required
 def nuevo_formulario():
-    return '''
+    return f'''
     <h2>Nuevo Formulario</h2>
     <form method="post" action="/guardar_formulario">
+    <input type="hidden" name="_csrf_token" value="{escape(csrf_token())}">
     Nombre:<br><input name="nombre"><br>
     Descripcion:<br><input name="descripcion"><br><br>
     <button type="submit">Guardar</button>
@@ -556,6 +1648,7 @@ def nuevo_formulario():
     '''
 
 @app.route('/guardar_formulario', methods=['POST'])
+@admin_required
 def guardar_formulario():
     df=pd.read_csv('data/formularios.csv')
     nid=(df['IdFormulario'].max()+1) if len(df)>0 else 1
@@ -569,6 +1662,7 @@ def guardar_formulario():
 from flask import jsonify
 
 @app.route('/api/formularios')
+@admin_required
 def api_formularios():
     import pandas as pd
     return jsonify(pd.read_csv('data/formularios.csv').fillna('').to_dict('records'))
@@ -576,6 +1670,7 @@ def api_formularios():
 
 
 @app.route('/api/formularios/<int:formulario_id>')
+@admin_required
 def api_formulario(formulario_id):
     import pandas as pd
     df=pd.read_csv('data/formularios.csv').fillna('')
@@ -585,6 +1680,7 @@ def api_formulario(formulario_id):
 
 
 @app.route('/formulario_crear',methods=['POST'])
+@admin_required
 def formulario_crear_ajax():
     import pandas as pd
     f='data/formularios.csv'
@@ -601,6 +1697,7 @@ def formulario_crear_ajax():
     return jsonify({'ok':True})
 
 @app.route('/formulario_eliminar/<int:fid>', methods=['POST'])
+@admin_required
 def formulario_eliminar_ajax(fid):
     import pandas as pd
     df=pd.read_csv('data/formularios.csv')
@@ -624,11 +1721,11 @@ def formulario_eliminar_ajax(fid):
 
 
 
-# V105 - Validación nombres únicos de formularios
 
 
 
 @app.route('/usuario_guardar', methods=['POST'])
+@admin_required
 def usuario_guardar():
     df=pd.read_csv('data/usuarios.csv')
     usuario=request.form.get('usuario','').strip()
@@ -640,11 +1737,15 @@ def usuario_guardar():
             return jsonify({'ok':False,'mensaje':'El usuario ya existe'})
 
     nid=(df['IdUsuario'].max()+1) if 'IdUsuario' in df.columns and len(df)>0 else len(df)+1
-    df.loc[len(df)]={'IdUsuario':nid,'Usuario':usuario,'Clave':request.form.get('clave',''),'Nombre':request.form.get('nombre',''),'Rol':request.form.get('rol',''),'IdFormulario':request.form.get('idformulario','1'),'Activo':1}
+    clave=request.form.get('clave','')
+    if len(clave)<8:
+        return jsonify({'ok':False,'mensaje':'La clave debe tener al menos 8 caracteres'}),400
+    df.loc[len(df)]={'IdUsuario':nid,'Usuario':usuario,'Clave':generate_password_hash(clave),'Nombre':request.form.get('nombre',''),'Rol':request.form.get('rol',''),'IdFormulario':request.form.get('idformulario','1'),'Activo':1}
     df.to_csv('data/usuarios.csv',index=False)
     return jsonify({'ok':True})
 
-@app.route('/usuario_eliminar/<int:uid>')
+@app.route('/usuario_eliminar/<int:uid>', methods=['POST'])
+@admin_required
 def usuario_eliminar(uid):
     df=pd.read_csv('data/usuarios.csv')
     cols=[c.lower() for c in df.columns]
@@ -659,14 +1760,17 @@ def usuario_eliminar(uid):
 
 
 @app.route('/api/usuario/<int:uid>')
+@admin_required
 def api_usuario(uid):
     import pandas as pd
     df=pd.read_csv('data/usuarios.csv').fillna('')
     df.columns=df.columns.str.lower()
     r=df[df['idusuario']==uid]
+    r=r.drop(columns=['clave'],errors='ignore')
     return r.to_json(orient='records')
 
 @app.route('/usuario_actualizar',methods=['POST'])
+@admin_required
 def usuario_actualizar():
     import pandas as pd
     df=pd.read_csv('data/usuarios.csv')
@@ -676,10 +1780,17 @@ def usuario_actualizar():
     df.loc[df[idc]==uid,'Usuario']=request.form.get('usuario','')
     df.loc[df[idc]==uid,'Nombre']=request.form.get('nombre','')
     df.loc[df[idc]==uid,'Rol']=request.form.get('rol','')
+    clave=request.form.get('clave','')
+    if clave:
+        if len(clave)<8:
+            return jsonify({'ok':False,'mensaje':'La clave debe tener al menos 8 caracteres'}),400
+        clave_col='Clave' if 'Clave' in df.columns else 'clave'
+        df.loc[df[idc]==uid,clave_col]=generate_password_hash(clave)
     df.to_csv('data/usuarios.csv',index=False)
     return jsonify({'ok':True})
 
 @app.route('/api/formularios_usuario/<int:uid>')
+@admin_required
 def api_formularios_usuario(uid):
     import pandas as pd
     try:f=pd.read_csv('data/formularios.csv').fillna('')
@@ -695,6 +1806,7 @@ def api_formularios_usuario(uid):
 
 
 @app.route('/api/formularios_todos')
+@admin_required
 def api_formularios_todos():
     import pandas as pd
     try:
@@ -704,6 +1816,7 @@ def api_formularios_todos():
         return '[]'
 
 @app.route('/usuario_formularios_guardar',methods=['POST'])
+@admin_required
 def usuario_formularios_guardar():
     import pandas as pd
     uid=int(request.form.get('idusuario',0))
@@ -718,9 +1831,12 @@ def usuario_formularios_guardar():
 
 
 @app.route('/api/preguntas/<int:formulario_id>')
+@admin_required
 def api_preguntas(formulario_id):
     import pandas as pd
     df = pd.read_csv('data/variables.csv').fillna('')
+    if 'Visible' not in df.columns:
+        df['Visible']=1
 
     if 'IdFormulario' in df.columns:
         df['IdFormulario'] = pd.to_numeric(
@@ -735,7 +1851,8 @@ def api_preguntas(formulario_id):
         'Variable',
         'Tipo',
         'Operacion',
-        'Factor'
+        'Factor',
+        'Visible'
     ]
 
     for c in columnas:
@@ -748,6 +1865,7 @@ def api_preguntas(formulario_id):
 
 
 @app.route('/api/conceptos/<int:fid>')
+@admin_required
 def api_conceptos(fid):
     import pandas as pd
     try:
@@ -759,6 +1877,7 @@ def api_conceptos(fid):
 
 
 @app.route('/api/conceptos/eliminar', methods=['POST'])
+@admin_required
 def api_conceptos_eliminar():
     import pandas as pd
     data=request.get_json()
@@ -770,6 +1889,7 @@ def api_conceptos_eliminar():
     return jsonify({'ok':True})
 
 @app.route('/api/conceptos/guardar', methods=['POST'])
+@admin_required
 def api_conceptos_guardar():
     import pandas as pd
     data=request.get_json()
@@ -777,7 +1897,11 @@ def api_conceptos_guardar():
     fid=str(data.get('id_formulario'))
     concepto=str(data.get('concepto','')).strip()
     original=str(data.get('concepto_original','')).strip()
-    valor=int(float(data.get('valor',0)))
+    if not fid or fid.lower() in ('none','nan','0'):
+        return jsonify({'ok':False,'error':'Debe seleccionar un formulario valido'}),400
+    if not concepto:
+        return jsonify({'ok':False,'error':'Debe diligenciar el concepto'}),400
+    valor=float(data.get('valor',0) or 0)
 
     if original:
         mask=(df['id_formulario'].astype(str)==fid) & (df['concepto'].astype(str).str.strip()==original)
@@ -797,7 +1921,182 @@ def api_conceptos_guardar():
     df.to_csv('data/configuracion_formularios.csv',index=False)
     return jsonify({'ok':True,'accion':'insertado'})
 
-if __name__=='__main__':
-    app.run(host='0.0.0.0',port=5000,debug=True)
+# ===== PREGUNTA CALCULADA: RANGO_TICKETS =====
+def cargar_parametros_calculo(formulario_id, operacion, id_pregunta=None):
+    try:
+        parametros=pd.read_csv('data/calculos_parametros.csv')
+        coincidencias=parametros[
+            (parametros['IdFormulario'].astype(str)==str(formulario_id)) &
+            (parametros['Operacion'].astype(str).str.strip().str.upper()==str(operacion).strip().upper())
+        ]
+        if id_pregunta is not None and 'IdPregunta' in coincidencias.columns:
+            exactas=coincidencias[coincidencias['IdPregunta'].astype(str)==str(id_pregunta)]
+            if not exactas.empty:
+                coincidencias=exactas
+            else:
+                coincidencias=coincidencias[coincidencias['IdPregunta'].astype(str).isin(('', '0', 'nan'))]
+        return {
+            str(row['Parametro']).strip().upper(): str(int(row['IdVariable']))
+            for _,row in coincidencias.iterrows()
+            if str(row.get('Parametro','')).strip()
+        }
+    except Exception:
+        return {}
 
+
+def obtener_respuesta_parametro(respuestas, parametros, parametro, predeterminado=''):
+    id_variable=str(parametros.get(str(parametro).strip().upper(),'')).strip()
+    if id_variable:
+        return respuestas.get(id_variable,predeterminado)
+    raise ValueError(f'No existe parametrizacion para {parametro}')
+
+
+def cargar_factor_parametrizado(ruta, opcion, predeterminado=1.0):
+    try:
+        factores=pd.read_csv(ruta)
+        coincidencia=factores[
+            factores['Opcion'].astype(str).str.strip().str.upper()==str(opcion).strip().upper()
+        ]
+        if not coincidencia.empty:
+            return float(coincidencia.iloc[0]['Factor'])
+    except Exception:
+        pass
+    return predeterminado
+
+
+def cargar_factor_porcentaje_opcion(id_variable, opcion, predeterminado=None):
+    try:
+        opciones=pd.read_csv('data/opciones.csv')
+        coincidencia=opciones[
+            (opciones['IdVariable'].astype(str)==str(id_variable)) &
+            (opciones['Opcion'].astype(str).str.strip().str.upper()==str(opcion).strip().upper())
+        ]
+        if not coincidencia.empty:
+            valor=float(coincidencia.iloc[0].get('Valor',0) or 0)
+            return 1 + (valor/100)
+    except Exception:
+        pass
+    return predeterminado
+
+
+def calcular_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponibilidad, id_pregunta, id_horario=None, id_disponibilidad=None):
+    total_tickets = float(cantidad_tickets or 0) + float(operacion_delegada or 0)
+    valor_base = None
+    cantidad_cotizada = total_tickets
+    try:
+        rangos=pd.read_csv('data/rangos_tickets.csv')
+        rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
+        rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
+        rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
+        coincidencia=rangos[
+            (rangos['DesdeNum']<=total_tickets) &
+            (rangos['HastaNum']>=total_tickets)
+        ]
+        if not coincidencia.empty:
+            valor_base=float(coincidencia.iloc[0]['Valor'])
+            hasta=float(coincidencia.iloc[0]['HastaNum'])
+            if hasta < 999999999:
+                cantidad_cotizada=hasta
+    except Exception:
+        pass
+    if valor_base is None:
+        raise ValueError('No existe un rango configurado para la cantidad de tickets')
+
+    factor_horario = cargar_factor_porcentaje_opcion(id_horario, horario, 1.00)
+    factor_disp = cargar_factor_porcentaje_opcion(id_disponibilidad, disponibilidad, 1.00)
+
+    return round(valor_base * factor_horario * factor_disp, 2), cantidad_cotizada
+
+
+def etiqueta_rango_tickets(total_tickets, id_pregunta):
+    try:
+        rangos=pd.read_csv('data/rangos_tickets.csv')
+        rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
+        rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
+        rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
+        coincidencia=rangos[
+            (rangos['DesdeNum']<=float(total_tickets or 0)) &
+            (rangos['HastaNum']>=float(total_tickets or 0))
+        ]
+        if not coincidencia.empty:
+            fila=coincidencia.iloc[0]
+            desde=float(fila.get('DesdeNum',0) or 0)
+            hasta=float(fila.get('HastaNum',0) or 0)
+            hasta_txt='mayor' if hasta>=999999999 else f'{hasta:g}'
+            return f'{desde:g} a {hasta_txt}'
+    except Exception:
+        pass
+    return 'sin rango configurado'
+
+
+@app.route('/api/rangos')
+@admin_required
+def api_rangos():
+    id_pregunta=str(request.args.get('idPregunta','')).strip()
+    ruta=os.path.join('data','rangos_tickets.csv')
+    if not os.path.exists(ruta):
+        return jsonify({'ok':True,'rangos':[]})
+    df=pd.read_csv(ruta)
+    if id_pregunta:
+        df=df[df['IdPregunta'].astype(str)==id_pregunta]
+    rangos=[]
+    for _,r in df.iterrows():
+        rangos.append({
+            'idPregunta':str(r.get('IdPregunta','')),
+            'desde':str(r.get('Desde','')),
+            'hasta':str(r.get('Hasta','')),
+            'valor':str(r.get('Valor','')),
+        })
+    return jsonify({'ok':True,'rangos':rangos})
+
+
+import csv, os
+from flask import request, jsonify
+
+@app.route('/api/rangos/guardar', methods=['POST'])
+@admin_required
+def api_guardar_rango():
+    data=request.json or {}
+    ruta=os.path.join('data','rangos_tickets.csv')
+    existe=os.path.exists(ruta)
+    with open(ruta,'a',newline='',encoding='utf-8') as f:
+        w=csv.writer(f)
+        if not existe:
+            w.writerow(['IdPregunta','Desde','Hasta','Valor'])
+        w.writerow([data.get('idPregunta'),data.get('desde'),data.get('hasta'),data.get('valor')])
+    return jsonify({'ok':True})
+
+
+@app.route('/api/rangos/guardar_todos', methods=['POST'])
+@admin_required
+def api_guardar_rangos_todos():
+    data=request.json or {}
+    id_pregunta=str(data.get('idPregunta','')).strip()
+    rangos=data.get('rangos',[])
+    if not id_pregunta:
+        return jsonify({'ok':False,'error':'Falta IdPregunta'}),400
+
+    ruta=os.path.join('data','rangos_tickets.csv')
+    if os.path.exists(ruta):
+        df=pd.read_csv(ruta)
+        df=df[df['IdPregunta'].astype(str)!=id_pregunta]
+    else:
+        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+
+    nuevos=[]
+    for r in rangos:
+        nuevos.append({
+            'IdPregunta':id_pregunta,
+            'Desde':r.get('desde',''),
+            'Hasta':r.get('hasta',''),
+            'Valor':r.get('valor',''),
+        })
+    if nuevos:
+        df=pd.concat([df,pd.DataFrame(nuevos)],ignore_index=True)
+    df.to_csv(ruta,index=False)
+    return jsonify({'ok':True,'rangos':nuevos})
+
+
+if __name__=='__main__':
+    app.run(host='0.0.0.0',port=int(os.environ.get('PORT',5000)),debug=False)
 

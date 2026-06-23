@@ -6,7 +6,7 @@
 ❌ {{ error }}
 </div>
 {% endif %}
-<form method='post'><input class='form-control mb-2' name='usuario' placeholder='Usuario'><input type='password' class='form-control mb-2' name='clave' placeholder='Contraseña'><button class='btn btn-primary w-100'>Ingresar</button></form>
+<form method='post'><input type='hidden' name='_csrf_token' value='{{ csrf_token() }}'><input class='form-control mb-2' name='usuario' placeholder='Usuario' required autocomplete='username'><input type='password' class='form-control mb-2' name='clave' placeholder='Contraseña' required autocomplete='current-password'><button class='btn btn-primary w-100'>Ingresar</button></form>
 
 
 

@@ -1,4 +1,4 @@
 IdUsuario,Usuario,Clave,Nombre,Rol,IdFormulario,Activo
-1,admin,admin,Administrador General,Administrador,1,1
-2,operador,operador,Usuario Operador,Administrador,1,1
-3,IAFIS,IAFIS2026.,Usuario Consulta,Consulta,1,1
+1,admin,scrypt:32768:8:1$UrTS3nAgzluLeaoj$8909a7500cb1986ea8594a256ff7f9366922f1711b2819d93a34c617e01f6d38315d4c3126970ad5c3c2d941b5783c59442a6d5109e93620a13937a9981bc56c,Administrador General,Administrador,1,1
+3,IAFIS,scrypt:32768:8:1$oHegKae3wmXnuIpF$ddfb20f657a7b8779faba9a89313491f1a20726f29c7dc730ceb7c35f4461717ab82a81fec77cb2bc468c3107b587dd64ecca0f678026b02a6d8f30127d664cd,Usuario Consulta,Consulta,1,1
+4,VirtualRis,scrypt:32768:8:1$mvipMLTq6e2vitEi$499f8fd3a87e99e2750f95c2d8479d5a04b77b34ebd0f5344d88e3d43a2d912ccfed77e0207393ba079865a17f70a4f029d705d59a9abbc5224bc0759e075fa7,VirtualRis,Consulta,1,1

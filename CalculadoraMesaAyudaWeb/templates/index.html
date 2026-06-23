@@ -1,9 +1,9 @@
-<!-- V63 chart patch applied -->
 <!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -40,6 +40,30 @@ body{
     border-bottom:2px solid #e8eef7;
     padding-bottom:10px;
     margin-bottom:20px;
+}
+.servicio-linea{
+    border:1px solid #d9e2ef;
+    border-radius:10px;
+    padding:14px;
+    margin-bottom:12px;
+    background:#fff;
+}
+.servicio-linea .linea-titulo{
+    font-weight:700;
+    color:#082b57;
+    margin-bottom:10px;
+}
+.servicio-aviso{
+    display:none;
+    margin-top:8px;
+    color:#b42318;
+    font-size:.9rem;
+}
+.servicio-linea.incompleto .servicio-aviso{
+    display:block;
+}
+.servicio-linea.incompleto{
+    border-color:#f3b4ad;
 }
 </style>
 
@@ -293,15 +317,22 @@ document.addEventListener('DOMContentLoaded',function(){
 
 <hr>
 
-
+{% if session.get('rol') == 'Administrador' %}
 <a href="/admin_login" style="color:white">
     📝 Administrador
+</a>
+{% endif %}
+<a href="http://localhost:5000/login" style="color:#ffdddd">
+    Cerrar Sesión
 </a>
 
 </div>
 
 <div class="col-md-7 p-3">
 {% if sin_formularios %}<div class="alert alert-warning m-3">No tiene formularios asignados. Contacte al administrador.</div>{% else %}
+        {% if formulario_nombre %}
+        <h3 class="mb-3">{{ formulario_nombre }}</h3>
+        {% endif %}
 
         <div class="row mb-3" style="display:none;">
 
@@ -319,6 +350,17 @@ document.addEventListener('DOMContentLoaded',function(){
 
         </div>
 
+        {% if servicios_excel %}
+        <div class="cardq card mb-3">
+            <div class="card-body">
+                <h4>Servicios</h4>
+                <div id="serviciosExcel"></div>
+                <button type="button" class="btn btn-primary" onclick="agregarServicio()">Agregar producto/servicio</button>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not servicios_excel %}
         {% for categoria, items in categorias.items() %}
 
         <div class="cardq card mb-3">
@@ -377,6 +419,7 @@ document.addEventListener('DOMContentLoaded',function(){
         </div>
 
         {% endfor %}
+        {% endif %}
 
         
 
@@ -416,6 +459,102 @@ document.addEventListener('DOMContentLoaded',function(){
 
 
 let chartCategorias=null;
+const SERVICIOS_EXCEL_ACTIVO={{ 'true' if servicios_excel else 'false' }};
+const CATALOGO_SERVICIOS={{ catalogo_servicios|default({})|tojson }};
+
+function opcionesHtml(opciones, valorProp, textoProp){
+    return (opciones||[]).map(x=>{
+        const valor=String(x[valorProp]||'');
+        const texto=String(x[textoProp]||x[valorProp]||'');
+        return '<option value="'+valor.replaceAll('"','&quot;')+'">'+texto+'</option>';
+    }).join('');
+}
+
+function agregarServicio(datos={}){
+    const contenedor=document.getElementById('serviciosExcel');
+    if(!contenedor) return;
+    const indice=contenedor.querySelectorAll('.servicio-linea').length+1;
+    const div=document.createElement('div');
+    div.className='servicio-linea';
+    div.innerHTML=
+      '<div class="linea-titulo">Servicio '+indice+'</div>'+
+      '<div class="row g-2 align-items-end">'+
+        '<div class="col-md-3"><label class="form-label"><b>Producto/Servicio</b></label><select class="form-control servicio-producto"><option value="">Seleccione</option>'+opcionesHtml((CATALOGO_SERVICIOS.productos||[]).map(x=>({v:x})),'v','v')+'</select></div>'+
+        '<div class="col-md-4"><label class="form-label"><b>Perfil</b></label><select class="form-control servicio-perfil"><option value="">Seleccione</option></select></div>'+
+        '<div class="col-md-2"><label class="form-label"><b>Porcentaje</b></label><input type="number" min="0" step="1" class="form-control servicio-porcentaje"></div>'+
+        '<div class="col-md-2"><label class="form-label"><b>Disponibilidad</b></label><select class="form-control servicio-disponibilidad"><option value="">Seleccione</option>'+opcionesHtml(CATALOGO_SERVICIOS.disponibilidades||[],'opcion','opcion')+'</select></div>'+
+        '<div class="col-md-1"><button type="button" class="btn btn-outline-danger w-100" onclick="eliminarServicio(this)">Quitar</button></div>'+
+      '</div>'+
+      '<div class="servicio-aviso">Complete Producto/Servicio, Perfil y Porcentaje para cotizar esta línea.</div>';
+    contenedor.appendChild(div);
+    const producto=div.querySelector('.servicio-producto');
+    producto.addEventListener('change',()=>actualizarPerfilesServicio(div));
+    div.querySelectorAll('input,select').forEach(c=>c.addEventListener('input',()=>validarLineaServicio(div)));
+    if(datos.producto_servicio) producto.value=datos.producto_servicio;
+    actualizarPerfilesServicio(div);
+    if(datos.perfil) div.querySelector('.servicio-perfil').value=datos.perfil;
+    if(datos.porcentaje) div.querySelector('.servicio-porcentaje').value=datos.porcentaje;
+    if(datos.disponibilidad) div.querySelector('.servicio-disponibilidad').value=datos.disponibilidad;
+    validarLineaServicio(div);
+}
+
+function actualizarPerfilesServicio(linea){
+    const producto=linea.querySelector('.servicio-producto').value;
+    const perfil=linea.querySelector('.servicio-perfil');
+    const actual=perfil.value;
+    const perfiles=(CATALOGO_SERVICIOS.perfiles||[]).filter(x=>String(x.producto)===String(producto));
+    perfil.innerHTML='<option value="">Seleccione</option>'+opcionesHtml(perfiles,'perfil','perfil');
+    if([...perfil.options].some(o=>o.value===actual)) perfil.value=actual;
+    validarLineaServicio(linea);
+}
+
+function datosLineaServicio(linea){
+    return {
+        producto_servicio:linea.querySelector('.servicio-producto')?.value||'',
+        perfil:linea.querySelector('.servicio-perfil')?.value||'',
+        porcentaje:linea.querySelector('.servicio-porcentaje')?.value||'',
+        disponibilidad:linea.querySelector('.servicio-disponibilidad')?.value||''
+    };
+}
+
+function lineaServicioConDatos(datos){
+    return Boolean(datos.producto_servicio || datos.perfil || datos.porcentaje || datos.disponibilidad);
+}
+
+function lineaServicioCompleta(datos){
+    return Boolean(datos.producto_servicio && datos.perfil && Number(datos.porcentaje)>0);
+}
+
+function validarLineaServicio(linea){
+    const datos=datosLineaServicio(linea);
+    const incompleta=lineaServicioConDatos(datos) && !lineaServicioCompleta(datos);
+    linea.classList.toggle('incompleto',incompleta);
+    return !incompleta;
+}
+
+function validarServiciosCompletos(){
+    if(!SERVICIOS_EXCEL_ACTIVO) return true;
+    let ok=true;
+    document.querySelectorAll('.servicio-linea').forEach(linea=>{
+        if(!validarLineaServicio(linea)) ok=false;
+    });
+    if(!ok) alert('Complete Producto/Servicio, Perfil y Porcentaje en cada línea antes de continuar.');
+    return ok;
+}
+
+function eliminarServicio(boton){
+    const linea=boton.closest('.servicio-linea');
+    if(linea) linea.remove();
+    document.querySelectorAll('.servicio-linea .linea-titulo').forEach((x,i)=>x.textContent='Servicio '+(i+1));
+    calcular();
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+    if(SERVICIOS_EXCEL_ACTIVO && document.getElementById('serviciosExcel')){
+        agregarServicio();
+    }
+});
+
 function actualizarGrafica(datos){
  const ctx=document.getElementById('graficaCategorias');
  if(!ctx) return;
@@ -430,6 +569,7 @@ function actualizarGrafica(datos){
 function payload(){
 
     let r={};
+    let servicios=[];
 
     document.querySelectorAll('.sel').forEach(x=>{
         r[x.name]=x.value;
@@ -439,11 +579,25 @@ function payload(){
         r[x.name]=x.value;
     });
 
+    document.querySelectorAll('.servicio-linea').forEach(linea=>{
+        servicios.push(datosLineaServicio(linea));
+    });
+
     return {
         formulario_id: {{ formulario_actual|default(0) }},
-        respuestas:r
+        respuestas:r,
+        servicios:servicios
     };
 }
+
+const originalFetch=window.fetch.bind(window);
+window.fetch=(url,options={})=>{
+    const config={...options,headers:{...(options.headers||{})}};
+    if((config.method||'GET').toUpperCase()!=='GET'){
+        config.headers['X-CSRF-Token']=document.querySelector('meta[name="csrf-token"]').content;
+    }
+    return originalFetch(url,config);
+};
 
 function calcular(){
 
@@ -459,20 +613,22 @@ function calcular(){
 
     })
 
-    .then(r=>r.json())
+    .then(async r=>{
+        const d=await r.json();
+        if(!r.ok){
+            d.total=0;
+            d.categorias={};
+            d.detalle=d.error||'No fue posible calcular la cotización con la configuración actual.';
+        }
+        return d;
+    })
 
     .then(d=>{
 
-        ktotal.innerText =
-            '$ ' +
-            Number(d.total).toLocaleString('es-CO');
-
-        
-
-ktotal.innerText =
-    '$ ' +
-    Number(d.total).toLocaleString('es-CO');
-total.innerText = ktotal.innerText;
+        const totalCalculado=Number(d.total);
+        const totalSeguro=Number.isFinite(totalCalculado) ? totalCalculado : 0;
+        ktotal.innerText = '$ ' + totalSeguro.toLocaleString('es-CO');
+        total.innerText = ktotal.innerText;
 
 
 
@@ -481,7 +637,8 @@ total.innerText = ktotal.innerText;
             let html='';
             Object.entries(d.categorias).forEach(([cat,val])=>{
                 if(Number(val)>0){
-                    html += '<div style="display:flex;justify-content:space-between"><span>'+cat+'</span><b>$'+Number(val).toLocaleString('es-CO')+'</b></div>';
+                    const valorCategoria=Number(val);
+                    html += '<div style="display:flex;justify-content:space-between"><span>'+cat+'</span><b>$'+(Number.isFinite(valorCategoria) ? valorCategoria : 0).toLocaleString('es-CO')+'</b></div>';
                 }
             });
             detalle.innerHTML=html;
@@ -496,6 +653,7 @@ total.innerText = ktotal.innerText;
 function formularioTieneDatos(){let tieneDatos=false;document.querySelectorAll('input,select,textarea').forEach(c=>{if(c.type==='hidden') return;const valor=(c.value||'').toString().trim();if(valor!=='') tieneDatos=true;});return tieneDatos;}
 
 function guardar(){
+    if(!validarServiciosCompletos()) return;
 
     if(!formularioTieneDatos()){ alert('Debe diligenciar al menos un campo antes de guardar la cotización.'); return; }
 
@@ -511,7 +669,7 @@ function guardar(){
                 'Content-Type':'application/json'
             },
 
-            body:JSON.stringify(window.ult || {})
+            body:JSON.stringify(payload())
 
         })
         .then(r=>r.json())
@@ -521,6 +679,7 @@ function guardar(){
 }
 
 function generarPDF(){
+    if(!validarServiciosCompletos()) return;
 
     if(!formularioTieneDatos()){ alert('Debe diligenciar al menos un campo antes de generar la cotización.'); return; }
 
@@ -532,7 +691,7 @@ function generarPDF(){
             'Content-Type':'application/json'
         },
 
-        body:JSON.stringify(window.ult || {})
+        body:JSON.stringify(payload())
 
     })
     .then(r=>r.blob())
