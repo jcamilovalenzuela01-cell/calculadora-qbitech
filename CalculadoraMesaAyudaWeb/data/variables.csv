@@ -46,7 +46,7 @@ IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible
 47,2,Volumen,Cantidad Tickets Operación Delegada,NUMERO,FIJO,0.0,Activo,1
 48,2,Servicio,Horario de Atención,LISTA,FIJO,0.0,Activo,1
 49,2,Servicio,¿Requiere disponibilidad?,LISTA,PORCENTAJE,0.0,Activo,1
-50,2,Costos,Valor Unitario Ticket,CALCULADA,RANGO_TICKETS,0.0,Activo,0
+50,2,Volumen,Valor Unitario Ticket,CALCULADA,RANGO_TICKETS,0.0,Activo,0
 51,2,Servicio,Idioma,LISTA,PORCENTAJE,0.0,Activo,1
 30117,2,Servicio,	Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1
 30118,1,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1

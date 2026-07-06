@@ -2004,6 +2004,8 @@ def calcular_rango_tickets(cantidad_tickets, operacion_delegada, horario, dispon
 
     factor_horario = cargar_factor_porcentaje_opcion(id_horario, horario, 1.00)
     factor_disp = cargar_factor_porcentaje_opcion(id_disponibilidad, disponibilidad, 1.00)
+    if str(horario).strip().upper() == '7*24':
+        factor_disp = 1.00
 
     return round(valor_base * factor_horario * factor_disp, 2), cantidad_cotizada
 
@@ -2099,4 +2101,3 @@ def api_guardar_rangos_todos():
 
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=int(os.environ.get('PORT',5000)),debug=False)
-

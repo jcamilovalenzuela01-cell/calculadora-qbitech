@@ -322,9 +322,12 @@ document.addEventListener('DOMContentLoaded',function(){
     📝 Administrador
 </a>
 {% endif %}
-<a href="/login" style="color:#ffdddd">
+<form method="post" action="/logout" class="m-0">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-link p-0" style="color:#ffdddd;text-decoration:none">
     Cerrar Sesión
-</a>
+    </button>
+</form>
 
 </div>
 
