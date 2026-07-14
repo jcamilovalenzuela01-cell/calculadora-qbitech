@@ -65,6 +65,43 @@ body{
 .servicio-linea.incompleto{
     border-color:#f3b4ad;
 }
+.explicacion-calculo{
+    border-top:1px solid #e8eef7;
+    margin-top:12px;
+    padding-top:10px;
+    font-size:.92rem;
+}
+.explicacion-calculo h6{
+    color:#082b57;
+    font-weight:700;
+    margin-bottom:8px;
+}
+.explicacion-linea{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    border-bottom:1px dashed #d9e2ef;
+    padding:4px 0;
+}
+.explicacion-linea span:first-child{
+    color:#52616f;
+}
+.explicacion-ajuste{
+    background:#eef8ff;
+    border:1px solid #b9e6ff;
+    border-radius:8px;
+    color:#064663;
+    margin-top:8px;
+    padding:7px 9px;
+}
+.explicacion-comentario{
+    background:#e8f7fb;
+    border:1px solid #a7e3ef;
+    border-radius:8px;
+    margin-top:8px;
+    padding:8px;
+    white-space:pre-line;
+}
 </style>
 
 <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
@@ -382,6 +419,14 @@ document.addEventListener('DOMContentLoaded',function(){
 
                     </label>
 
+                    {% if p.comentario and p.comentario|string|lower not in ['nan','none','null'] %}
+                    <div
+                        class="alert alert-secondary py-2 mb-2"
+                        style="white-space:pre-line">
+                        {{p.comentario}}
+                    </div>
+                    {% endif %}
+
                     {% if p.tipo == 'NUMERO' %}
 
                     <input
@@ -413,9 +458,31 @@ document.addEventListener('DOMContentLoaded',function(){
 
                     {% endif %}
 
+                    {% if p.resumenes %}
+                    <div
+                        class="alert alert-info mt-2 resumen-opcion"
+                        id="resumen-{{p.id}}"
+                        style="display:none; white-space:pre-line">
+                    </div>
+                    {% endif %}
+
+                    {% if 'Operación Delegada' in p.variable|string %}
+                    <div
+                        class="alert alert-info mt-2 comentario-rango-tickets"
+                        style="display:none; white-space:pre-line">
+                    </div>
+                    {% endif %}
+
                 </div>
 
                 {% endfor %}
+
+                {% if categoria|string|trim|lower == 'volumen' %}
+                <div
+                    class="alert alert-info mt-2 comentario-rango-tickets"
+                    style="display:none; white-space:pre-line">
+                </div>
+                {% endif %}
 
             </div>
 
@@ -440,6 +507,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 <h5>Resumen por Categoría</h5>
 <div id="detalle"></div>
+<div id="explicacionCalculo" class="explicacion-calculo" style="display:none"></div>
 </div>
 </div>
 
@@ -452,8 +520,8 @@ document.addEventListener('DOMContentLoaded',function(){
 
 <div class="botones-panel">
 <button onclick="guardar()" class="btn btn-success w-100 mb-2">Guardar Cotización</button>
-<button onclick="limpiarFormulario()" class="btn btn-secondary w-100 mb-2">🧹 Limpiar Formulario</button>
-<button onclick="generarPDF()" class="btn btn-danger w-100">📄 Generar Cotización PDF</button>
+<button onclick="limpiarFormulario()" class="btn btn-secondary w-100 mb-2">Limpiar Formulario</button>
+<button onclick="generarPDF()" class="btn btn-danger w-100">Generar Cotización PDF</button>
 </div>
 
 </div>
@@ -464,6 +532,118 @@ document.addEventListener('DOMContentLoaded',function(){
 let chartCategorias=null;
 const SERVICIOS_EXCEL_ACTIVO={{ 'true' if servicios_excel else 'false' }};
 const CATALOGO_SERVICIOS={{ catalogo_servicios|default({})|tojson }};
+const RESUMENES_PREGUNTAS={{ resumenes_preguntas|default({})|tojson }};
+
+function claveResumen(valor){
+    return String(valor || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/\s+/g,' ')
+        .trim()
+        .toUpperCase();
+}
+
+function actualizarResumenPregunta(campo){
+    const id=String(campo.name || '');
+    const contenedor=document.getElementById('resumen-'+id);
+    if(!contenedor) return;
+    const resumenes=RESUMENES_PREGUNTAS[id] || {};
+    const texto=resumenes[claveResumen(campo.value)] || '';
+    contenedor.textContent=texto;
+    contenedor.style.display=texto ? 'block' : 'none';
+}
+
+function actualizarComentarioRangoTickets(datos){
+    const contenedores=document.querySelectorAll('.comentario-rango-tickets');
+    if(!contenedores.length) return;
+    const normalizar=valor=>String(valor||'')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase();
+    const item=(datos.items||[]).find(x=>{
+        const pregunta=normalizar(x.pregunta);
+        const categoria=normalizar(x.categoria);
+        const comentario=String(x.comentario||'').trim();
+        return comentario && (
+            (categoria==='costos' && pregunta.includes('tickets')) ||
+            (pregunta.includes('tickets') && pregunta.includes('operaci'))
+        );
+    });
+    const texto=item && item.comentario ? String(item.comentario).trim() : '';
+    contenedores.forEach(contenedor=>{
+        contenedor.textContent='';
+        contenedor.style.display='none';
+    });
+    const contenedorPrincipal=contenedores[contenedores.length-1];
+    contenedorPrincipal.textContent=texto;
+    contenedorPrincipal.style.display=texto ? 'block' : 'none';
+}
+
+function moneda(valor){
+    const numero=Number(valor);
+    return '$ ' + (Number.isFinite(numero) ? numero : 0).toLocaleString('es-CO');
+}
+
+function numeroSimple(valor){
+    const numero=Number(valor);
+    return Number.isFinite(numero) ? numero.toLocaleString('es-CO') : '0';
+}
+
+function escapeHtml(valor){
+    return String(valor || '').replace(/[&<>"']/g, caracter => ({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#39;'
+    }[caracter]));
+}
+
+function actualizarExplicacionCalculo(datos){
+    const contenedor=document.getElementById('explicacionCalculo');
+    if(!contenedor) return;
+    const explicaciones=datos.explicacion_usuario || [];
+    if(!explicaciones.length){
+        contenedor.innerHTML='';
+        contenedor.style.display='none';
+        return;
+    }
+    const bloques=explicaciones.map(item=>{
+        const ajustes=[];
+        if(String(item.horario || '').trim()){
+            ajustes.push('Horario '+escapeHtml(item.horario)+': +'+numeroSimple(item.porcentaje_horario)+'%');
+        }
+        if(String(item.disponibilidad || '').trim()){
+            ajustes.push('Disponibilidad '+escapeHtml(item.disponibilidad)+': +'+numeroSimple(item.porcentaje_disponibilidad)+'%');
+        }
+        const ajustesHtml=ajustes.length
+            ? '<div class="explicacion-ajuste">'+ajustes.join('<br>')+'</div>'
+            : '';
+        const comentario=String(item.comentario || '').trim()
+            ? '<div class="explicacion-comentario">'+escapeHtml(item.comentario)+'</div>'
+            : '';
+        return '<h6>Cómo se calculó</h6>'+
+            '<div class="explicacion-linea"><span>Tickets ingresados</span><b>'+numeroSimple(item.tickets_ingresados)+'</b></div>'+
+            '<div class="explicacion-linea"><span>Tickets cotizados</span><b>'+numeroSimple(item.tickets_cotizados)+'</b></div>'+
+            '<div class="explicacion-linea"><span>Rango aplicado</span><b>'+escapeHtml(item.rango)+'</b></div>'+
+            '<div class="explicacion-linea"><span>Valor base ticket</span><b>'+moneda(item.valor_base)+'</b></div>'+
+            '<div class="explicacion-linea"><span>Valor ticket con características</span><b>'+moneda(item.valor_unitario)+'</b></div>'+
+            '<div class="explicacion-linea"><span>Total antes de IVA</span><b>'+moneda(datos.total)+'</b></div>'+
+            ajustesHtml+
+            comentario;
+    });
+    contenedor.innerHTML=bloques.join('');
+    contenedor.style.display='block';
+}
+
+document.addEventListener('change',function(e){
+    if(e.target && e.target.classList.contains('sel')){
+        actualizarResumenPregunta(e.target);
+    }
+});
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('.sel').forEach(actualizarResumenPregunta);
+});
 
 function opcionesHtml(opciones, valorProp, textoProp){
     return (opciones||[]).map(x=>{
@@ -649,6 +829,8 @@ function calcular(){
             detalle.innerHTML=(d.detalle||'');
         }
 
+        actualizarComentarioRangoTickets(d);
+        actualizarExplicacionCalculo(d);
         window.ult = d; try{actualizarGrafica(d.categorias||{});}catch(e){console.log(e);} 
     });
 }
@@ -730,6 +912,15 @@ function limpiarFormulario(){
     document.getElementById('total').innerText='$0';
 
     document.getElementById('detalle').innerHTML='';
+    document.querySelectorAll('.comentario-rango-tickets').forEach(comentarioRango=>{
+        comentarioRango.textContent='';
+        comentarioRango.style.display='none';
+    });
+    const explicacion=document.getElementById('explicacionCalculo');
+    if(explicacion){
+        explicacion.innerHTML='';
+        explicacion.style.display='none';
+    }
 
     window.ult={}; if(chartCategorias){chartCategorias.destroy();chartCategorias=null;}
 }

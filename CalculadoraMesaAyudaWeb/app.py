@@ -95,10 +95,15 @@ app.jinja_env.globals['csrf_token']=csrf_token
 
 @app.before_request
 def protect_csrf():
+    if request.path == '/logout':
+        return None
     if request.method in ('POST','PUT','PATCH','DELETE'):
         enviado=request.headers.get('X-CSRF-Token') or request.form.get('_csrf_token','')
         esperado=session.get('_csrf_token','')
         if not esperado or not hmac.compare_digest(str(enviado),str(esperado)):
+            if not (request.path.startswith('/api/') or request.is_json or request.headers.get('X-Requested-With')=='XMLHttpRequest'):
+                session.clear()
+                return redirect('/login')
             return jsonify({'ok':False,'error':'Token CSRF inválido'}),400
 
 @app.after_request
@@ -129,8 +134,7 @@ def login():
 
     return render_template('login.html', error=error)
 
-@app.route('/logout', methods=['POST'])
-@login_required
+@app.route('/logout', methods=['GET','POST'])
 def logout():
     session.clear()
     return redirect('/login')
@@ -184,6 +188,9 @@ def cotizaciones_por_mes_usuario(path='data/cotizaciones.csv'):
 
 def puede_usar_formulario(formulario_id):
     return es_admin() or int(formulario_id) in formularios_usuario(session.get('idusuario',0))
+
+def resumen_opciones_pregunta(formulario_id, nombre_pregunta):
+    return {}
 
 
 def pregunta_visible(registro):
@@ -431,7 +438,7 @@ def pregunta_es_calculo_servicios(vid):
 
 def datos_pregunta_calculada(vid):
     try:
-        variables=pd.read_csv('data/variables.csv').fillna('')
+        variables=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
         fila=variables[variables['IdVariable'].astype(str)==str(vid)]
         if not fila.empty:
             row=fila.iloc[0]
@@ -441,6 +448,7 @@ def datos_pregunta_calculada(vid):
                 'pregunta':str(row.get('Variable','')),
                 'tipo':str(row.get('Tipo','')),
                 'operacion':str(row.get('Operacion','')),
+                'comentarios':comentario_pregunta(row),
             }
     except Exception:
         pass
@@ -450,6 +458,7 @@ def datos_pregunta_calculada(vid):
         'pregunta':'',
         'tipo':'CALCULADA',
         'operacion':'',
+        'comentarios':'',
     }
 
 
@@ -505,6 +514,49 @@ def clave_texto(texto):
     texto=unicodedata.normalize('NFKD',texto)
     texto=''.join(c for c in texto if not unicodedata.combining(c))
     return re.sub(r'\s+',' ',texto).strip().upper()
+
+
+def asegurar_columna_comentarios(df):
+    if 'Comentarios' not in df.columns:
+        df['Comentarios']=''
+    df['Comentarios']=df['Comentarios'].fillna('').astype(str)
+    df.loc[df['Comentarios'].str.lower().isin(('nan','none','null')),'Comentarios']=''
+    return df
+
+
+def comentarios_opciones_pregunta(opciones_df, id_variable):
+    comentarios={}
+    opciones_df=asegurar_columna_comentarios(opciones_df.fillna(''))
+    for _,opcion in opciones_df[opciones_df['IdVariable'].astype(str)==str(id_variable)].iterrows():
+        comentario=str(opcion.get('Comentarios','')).strip()
+        if comentario:
+            comentarios[clave_texto(opcion.get('Opcion',''))]=reparar_texto_mojibake(comentario)
+    return comentarios
+
+
+def comentario_pregunta(registro):
+    valor=str(registro.get('Comentarios','')).strip()
+    if valor.lower() in ('','nan','none','null'):
+        return ''
+    return reparar_texto_mojibake(valor)
+
+
+def formato_numero_admin(valor):
+    texto=str(valor if valor is not None else '').strip()
+    if texto.lower() in ('', 'nan', 'none', 'null'):
+        return ''
+    try:
+        numero=float(texto.replace(',','.'))
+        if numero.is_integer():
+            return str(int(numero))
+        return f'{numero:g}'
+    except Exception:
+        return texto
+
+
+def unir_comentarios(*comentarios):
+    limpios=[reparar_texto_mojibake(c).strip() for c in comentarios if str(c or '').strip()]
+    return '\n\n'.join(limpios)
 
 
 def valor_tarifa_perfil(formulario_id, producto, perfil):
@@ -758,10 +810,10 @@ def home():
         formularios_menu=formularios_menu[formularios_menu['IdFormulario'].isin(ids)]
     except:
         formularios_menu=pd.DataFrame(columns=['IdFormulario','Nombre'])
-    variables=pd.read_csv('data/variables.csv')
+    variables=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
     if 'IdFormulario' in variables.columns:
         variables=variables[variables['IdFormulario'].isin(ids)]
-    opciones=pd.read_csv('data/opciones.csv')
+    opciones=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv').fillna(''))
     preguntas=[]
     for _,v in variables.iterrows():
         vid=int(v['IdVariable'])
@@ -769,14 +821,15 @@ def home():
         if not pregunta_visible(v) or tipo=='CALCULADA':
             continue
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
-        preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
+        preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts,'resumenes':comentarios_opciones_pregunta(opciones,vid),'comentario':comentario_pregunta(v)})
         
     from collections import defaultdict
     categorias=defaultdict(list)
     for p in preguntas:
         row=variables[variables['IdVariable']==p['id']].iloc[0]
         categorias[str(row['Categoria'])].append(p)
-    return render_template('index.html',preguntas=preguntas,categorias=dict(categorias),formularios=formularios_menu.to_dict('records'))
+    resumenes_preguntas={str(p['id']):p['resumenes'] for p in preguntas if p.get('resumenes')}
+    return render_template('index.html',preguntas=preguntas,categorias=dict(categorias),formularios=formularios_menu.to_dict('records'),resumenes_preguntas=resumenes_preguntas)
 
 @app.route('/cotizaciones')
 @login_required
@@ -832,7 +885,7 @@ def cuestionario_admin():
 
     
     f='data/variables.csv'
-    df=pd.read_csv(f)
+    df=asegurar_columna_comentarios(pd.read_csv(f).fillna(''))
     if 'Visible' not in df.columns:
         df['Visible']=1
     formularios=pd.read_csv('data/formularios.csv').fillna('').to_dict('records')
@@ -847,7 +900,7 @@ def cuestionario_admin():
             factor=float(request.form.get('factor',0) or 0)
         except Exception:
             factor=0
-        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':request.form.get('visible',1)}
+        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':request.form.get('visible',1),'Comentarios':request.form.get('comentarios','')}
         df.to_csv(f,index=False)
         try:
             opf='data/opciones.csv'
@@ -870,12 +923,12 @@ def cuestionario_admin():
         else:
             icon=f"<button type='button' class='btn btn-info btn-sm btn-opciones' data-id='{pid}' data-tipo='{escape(tipo)}' data-operacion='{escape(operacion)}'>Opciones</button>"
         visible=str(r.get('Visible',1))
-        argumentos=','.join((str(pid),json.dumps(str(r.get('Categoria',''))),json.dumps(str(r.get('Variable',''))),json.dumps(tipo),json.dumps(str(r.get('Operacion','FIJO'))),json.dumps(float(r.get('Factor',0) or 0)),json.dumps(visible)))
+        argumentos=','.join((str(pid),json.dumps(str(r.get('Categoria',''))),json.dumps(str(r.get('Variable',''))),json.dumps(tipo),json.dumps(str(r.get('Operacion','FIJO'))),json.dumps(float(r.get('Factor',0) or 0)),json.dumps(visible),json.dumps(str(r.get('Comentarios','')))))
         onclick=escape(f'editar({argumentos})')
         token=escape(csrf_token())
         estado_visible='Visible' if pregunta_visible(r) else 'Invisible'
-        rows += f"<tr><td>{pid}</td><td>{escape(str(r.get('Categoria','')))}</td><td>{escape(str(r.get('Variable','')))}</td><td>{escape(tipo)}</td><td>{estado_visible}</td><td><button class='btn btn-warning btn-sm' onclick='{onclick}'>Editar</button> <form style='display:inline' method='post' action='/pregunta_eliminar/{pid}'><input type='hidden' name='_csrf_token' value='{token}'><button class='btn btn-danger btn-sm'>Eliminar</button></form> {icon}</td></tr>"
-    tabla=f"<table class='table'><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Acciones</th></tr>{rows}</table>"
+        rows += f"<tr><td>{pid}</td><td>{escape(str(r.get('Categoria','')))}</td><td>{escape(str(r.get('Variable','')))}</td><td>{escape(tipo)}</td><td>{estado_visible}</td><td>{escape(str(r.get('Comentarios','')))}</td><td><div class='acciones-pregunta'><button class='btn btn-warning btn-sm' onclick='{onclick}'>Editar</button> <form style='display:inline' method='post' action='/pregunta_eliminar/{pid}'><input type='hidden' name='_csrf_token' value='{token}'><button class='btn btn-danger btn-sm'>Eliminar</button></form> {icon}</div></td></tr>"
+    tabla=f"<table class='table'><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Comentarios</th><th>Acciones</th></tr>{rows}</table>"
     formularios=[]
     try:
         formularios=pd.read_csv('data/formularios.csv').fillna('').to_dict('records')
@@ -955,7 +1008,7 @@ def cuestionario_admin():
 @admin_required
 def pregunta_eliminar(pid):
     if not auth(): return redirect('/login')
-    df=pd.read_csv('data/variables.csv')
+    df=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
     df=df[df['IdVariable']!=pid]
     df.to_csv('data/variables.csv',index=False)
     try:
@@ -973,13 +1026,21 @@ def opciones_admin(vid):
     if pregunta_es_calculo_servicios(vid):
         fid=formulario_id_por_pregunta(vid)
         return redirect(f'/servicios_config_admin/{fid}')
+    nombre_pregunta=f'ID {vid}'
+    try:
+        variables=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
+        pregunta=variables[variables['IdVariable'].astype(str)==str(vid)]
+        if not pregunta.empty:
+            nombre_pregunta=reparar_texto_mojibake(str(pregunta.iloc[0].get('Variable','')).strip()) or nombre_pregunta
+    except Exception:
+        pass
     if request.method=='POST':
-        op=pd.read_csv('data/opciones.csv')
+        op=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv'))
         valor=normalizar_valor_perfil(vid,float(request.form.get('valor',0) or 0))
-        op.loc[len(op)]={'IdVariable':vid,'Opcion':request.form['opcion'],'Valor':valor}
+        op.loc[len(op)]={'IdVariable':vid,'Opcion':request.form['opcion'],'Valor':valor,'Comentarios':request.form.get('comentarios','')}
         op.to_csv('data/opciones.csv',index=False)
         sincronizar_valor_tarifa_perfil(vid,request.form['opcion'],valor)
-    op=pd.read_csv('data/opciones.csv')
+    op=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv').fillna(''))
     ops=op[op['IdVariable']==vid]
     rows=''
     for _,r in ops.iterrows():
@@ -987,34 +1048,76 @@ def opciones_admin(vid):
         opcion_url=quote(opcion_texto,safe='')
         opcion_html=escape(opcion_texto)
         valor_html=escape(str(r['Valor']))
+        comentario_html=escape(str(r.get('Comentarios','')))
         token=escape(csrf_token())
-        rows += f"<tr><td>{opcion_html}</td><td>{valor_html}</td><td><form style='display:inline' method='post' action='/opcion_editar/{vid}/{opcion_url}'><input type='hidden' name='_csrf_token' value='{token}'><input name='opcion' value='{opcion_html}'><input name='valor' value='{valor_html}' type='number'><button class='btn btn-upd'>Actualizar</button></form> <form style='display:inline' method='post' action='/opcion_eliminar/{vid}/{opcion_url}'><input type='hidden' name='_csrf_token' value='{token}'><button class='btn-del'>Eliminar</button></form></td></tr>"
+        rows += f"<tr><td>{opcion_html}</td><td>{valor_html}</td><td>{comentario_html}</td><td><form class='row g-2 align-items-start' method='post' action='/opcion_editar/{vid}/{opcion_url}'><input type='hidden' name='_csrf_token' value='{token}'><div class='col-md-3'><input class='form-control' name='opcion' value='{opcion_html}'></div><div class='col-md-2'><input class='form-control' name='valor' value='{valor_html}' type='number' step='any'></div><div class='col-md-5'><textarea class='form-control' name='comentarios' rows='2'>{comentario_html}</textarea></div><div class='col-md-2'><button class='btn btn-upd mb-1'>Actualizar</button></div></form> <form style='display:inline' method='post' action='/opcion_eliminar/{vid}/{opcion_url}' onsubmit=\"return confirm('¿Eliminar esta opción?')\"><input type='hidden' name='_csrf_token' value='{token}'><button class='btn-del'>Eliminar</button></form></td></tr>"
     return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
 <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 <style>
 body{{background:#f4f7fb;padding:20px;font-family:Segoe UI}}
 .card{{border:none;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.12)}}
 .header{{background:#0d6efd;color:#fff;padding:15px 20px;border-radius:18px 18px 0 0;font-size:24px;font-weight:700}}
-.table{{background:#fff;border-radius:12px;overflow:hidden}}
+.table{{background:#fff;border-radius:12px;overflow:hidden;table-layout:fixed;width:100%}}
 .table thead th{{background:#0d6efd;color:#fff;border:none}}
+.table th:nth-child(1),.table td:nth-child(1){{width:27%}}
+.table th:nth-child(2),.table td:nth-child(2){{width:14%}}
+.table th:nth-child(3),.table td:nth-child(3){{width:39%}}
+.table th:nth-child(4),.table td:nth-child(4){{width:20%}}
 .table tbody tr:nth-child(even){{background:#f8fbff}}
 .table tbody tr:hover{{background:#eef5ff}}
 .btn-add{{background:#0d6efd;color:#fff}}
-.btn-upd{{background:#ffc107;border:none}}
-.btn-del{{background:#dc3545;color:#fff;text-decoration:none;padding:6px 12px;border-radius:8px}}
-input{{border-radius:8px!important}}
+.btn-upd{{background:#ffc107;border:none;color:#111}}
+.btn-del{{background:#dc3545;color:#fff;text-decoration:none;border:none}}
+input{{border-radius:8px!important;width:100%}}
+textarea{{border-radius:8px!important;width:100%;min-width:0;resize:vertical}}
+.acciones-opcion{{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-start;white-space:nowrap;min-width:220px}}
+.acciones-opcion form{{display:inline-flex!important;margin:0;flex:0 0 auto}}
+.acciones-opcion button{{width:auto;min-width:96px;padding:8px 10px;border-radius:8px;white-space:nowrap}}
 </style></head><body>
 <div class='card'>
-<div class='header'>Opciones {vid}</div>
+<div class='header'>Opciones Pregunta: {escape(nombre_pregunta)}</div>
 <div class='card-body'>
 <form method='post' class='row g-2 mb-3'>
 <input type='hidden' name='_csrf_token' value='{escape(csrf_token())}'>
 <div class='col'><input class='form-control' name='opcion' placeholder='Respuesta'></div>
-<div class='col'><input class='form-control' name='valor' type='number' placeholder='Valor'></div>
+<div class='col'><input class='form-control' name='valor' type='number' step='any' placeholder='Valor'></div>
+<div class='col-12'><textarea class='form-control' name='comentarios' rows='3' placeholder='Comentarios'></textarea></div>
 <div class='col-auto'><button class='btn btn-add'>Agregar</button></div>
 </form>
-<table class='table table-hover'><thead><tr><th>Respuesta</th><th>Valor</th><th>Acciones</th></tr></thead><tbody>{rows}</tbody></table>
-</div></div></body></html>"""
+<table class='table table-hover' id='tablaOpciones'><thead><tr><th>Respuesta</th><th>Valor</th><th>Comentarios</th><th>Acción</th></tr></thead><tbody>{rows}</tbody></table>
+</div></div>
+<script>
+document.querySelectorAll('#tablaOpciones tbody tr').forEach(function(row,index){{
+    const cells=row.querySelectorAll('td');
+    if(cells.length<4) return;
+    const form=cells[3].querySelector('form[action*="/opcion_editar/"]');
+    if(!form) return;
+    if(!form.id) form.id='editar_opcion_'+index;
+    const respuesta=form.querySelector('[name="opcion"]');
+    const valor=form.querySelector('[name="valor"]');
+    const comentarios=form.querySelector('[name="comentarios"]');
+    const token=form.querySelector('[name="_csrf_token"]');
+    const actualizar=form.querySelector('button');
+    const eliminarForm=cells[3].querySelector('form[action*="/opcion_eliminar/"]');
+    [respuesta,valor,comentarios].forEach(function(campo){{
+        if(campo) campo.setAttribute('form',form.id);
+    }});
+    if(respuesta) cells[0].replaceChildren(respuesta);
+    if(valor) cells[1].replaceChildren(valor);
+    if(comentarios) cells[2].replaceChildren(comentarios);
+    cells[3].classList.add('acciones-opcion');
+    if(actualizar){{
+        actualizar.classList.add('btn','btn-upd');
+        form.replaceChildren();
+        if(token) form.appendChild(token);
+        form.appendChild(actualizar);
+    }}
+    if(eliminarForm){{
+        cells[3].replaceChildren(form,eliminarForm);
+    }}
+}});
+</script>
+</body></html>"""
 
 
 @app.route('/calculada_config_admin/<int:vid>')
@@ -1091,13 +1194,26 @@ def calculada_config_admin(vid):
             rangos=pd.read_csv('data/rangos_tickets.csv').fillna('')
             rangos=rangos[rangos['IdPregunta'].astype(str)==str(vid)]
         except Exception:
-            rangos=pd.DataFrame(columns=['Desde','Hasta','Valor'])
+            rangos=pd.DataFrame(columns=['Desde','Hasta','Valor','Comentarios'])
+        rangos=asegurar_columna_comentarios(rangos)
         filas=''.join(
-            f"<tr><td><input class='form-control' name='desde' value='{escape(str(r.get('Desde','')))}'></td><td><input class='form-control' name='hasta' value='{escape(str(r.get('Hasta','')))}'></td><td><input class='form-control' name='valor' value='{escape(str(r.get('Valor','')))}'></td></tr>"
+            f"<tr><td><input class='form-control' name='desde' value='{escape(formato_numero_admin(r.get('Desde','')))}'></td><td><input class='form-control' name='hasta' value='{escape(formato_numero_admin(r.get('Hasta','')))}'></td><td><input class='form-control' name='valor' value='{escape(formato_numero_admin(r.get('Valor','')))}'></td><td><textarea class='form-control' name='comentario_rango' rows='2'>{escape(str(r.get('Comentarios','')))}</textarea></td></tr>"
             for _,r in rangos.iterrows()
         )
-        rangos_html=f"<hr><h5>Rangos</h5><table class='table'><thead><tr><th>Desde</th><th>Hasta</th><th>Valor Base</th></tr></thead><tbody>{filas}<tr><td><input class='form-control' name='desde' placeholder='Desde'></td><td><input class='form-control' name='hasta' placeholder='Hasta'></td><td><input class='form-control' name='valor' placeholder='Valor Base'></td></tr></tbody></table>"
+        rangos_html=f"<hr><h5>Rangos</h5><table class='table'><thead><tr><th>Desde</th><th>Hasta</th><th>Valor Base</th><th>Comentario</th></tr></thead><tbody>{filas}<tr><td><input class='form-control' name='desde' placeholder='Desde'></td><td><input class='form-control' name='hasta' placeholder='Hasta'></td><td><input class='form-control' name='valor' placeholder='Valor Base'></td><td><textarea class='form-control' name='comentario_rango' rows='2' placeholder='Comentario'></textarea></td></tr></tbody></table>"
+    comentario_actual=escape(comentario_pregunta({'Comentarios':pregunta.get('comentarios','')}))
     token=escape(csrf_token())
+    if int(float(op.get('UsaRangos',0) or 0))==1:
+        return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+<style>body{{padding:20px;background:#f8fafc;font-family:Segoe UI}} .card{{border:none;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}} .header{{background:#0d6efd;color:#fff;padding:14px 18px;border-radius:16px 16px 0 0;font-weight:700;font-size:22px}}</style>
+</head><body><div class='card'><div class='header'>Configurar pregunta calculada {vid}</div><div class='card-body'>
+<form method='post' action='/calculada_config_admin/{vid}/guardar'>
+<input type='hidden' name='_csrf_token' value='{token}'>
+{rangos_html}
+<button class='btn btn-primary mt-3'>Guardar Configuración</button>
+</form>
+</div></div></body></html>"""
     return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
 <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css' rel='stylesheet'>
 <style>body{{padding:20px;background:#f8fafc;font-family:Segoe UI}} .card{{border:none;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.12)}} .header{{background:#0d6efd;color:#fff;padding:14px 18px;border-radius:16px 16px 0 0;font-weight:700;font-size:22px}} small{{color:#667085}}</style>
@@ -1108,6 +1224,10 @@ def calculada_config_admin(vid):
 <p><b>Formula:</b> {escape(str(op.get('Formula','')))}</p>
 <form method='post' action='/calculada_config_admin/{vid}/guardar'>
 <input type='hidden' name='_csrf_token' value='{token}'>
+<div class='mb-3'>
+<label><b>Comentarios</b></label>
+<textarea class='form-control' name='comentarios' rows='3' placeholder='Comentarios de la pregunta calculada'>{comentario_actual}</textarea>
+</div>
 <h5>Parametros de entrada y salida</h5>
 <table class='table'><thead><tr><th>Parametro</th><th>Uso logico</th><th>Requerido</th><th>Pregunta asociada</th></tr></thead><tbody>{filas_param}</tbody></table>
 {('<hr><h5>Configuracion de la operacion</h5><div class=\"row g-2\">'+campos_cfg+'</div>') if campos_cfg else ''}
@@ -1124,13 +1244,14 @@ def calculada_config_admin_guardar_rangos(vid):
     desde=request.form.getlist('desde')
     hasta=request.form.getlist('hasta')
     valor=request.form.getlist('valor')
+    comentarios=request.form.getlist('comentario_rango')
     nuevos=[]
-    for d,h,v in zip(desde,hasta,valor):
+    for d,h,v,c in zip(desde,hasta,valor,comentarios):
         if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
             continue
-        nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v)})
+        nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Comentarios':str(c or '').strip()})
     path='data/rangos_tickets.csv'
-    actual=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+    actual=asegurar_columna_comentarios(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
     actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
     if nuevos:
         actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
@@ -1145,18 +1266,27 @@ def calculada_config_admin_guardar(vid):
     operacion=str(pregunta.get('operacion','')).upper()
     formulario_id=int(pregunta.get('formulario_id',0) or formulario_id_por_pregunta(vid))
 
+    variables_path='data/variables.csv'
+    variables=asegurar_columna_comentarios(pd.read_csv(variables_path).fillna(''))
+    idx=variables[variables['IdVariable'].astype(str)==str(vid)].index
+    if len(idx):
+        variables.loc[idx[0],'Comentarios']=str(request.form.get('comentarios','')).strip()
+        variables.to_csv(variables_path,index=False)
+
     defs_param=cargar_def_parametros_calculo(operacion)
     params_path='data/calculos_parametros.csv'
     params=pd.read_csv(params_path).fillna('') if os.path.exists(params_path) else pd.DataFrame(columns=['IdFormulario','IdPregunta','Operacion','Parametro','IdVariable'])
     if 'IdPregunta' not in params.columns:
         params['IdPregunta']=''
-    params=params[~((params['IdFormulario'].astype(str)==str(formulario_id)) & (params['Operacion'].astype(str).str.upper()==operacion) & (params['IdPregunta'].astype(str)==str(vid)))]
-    for _,defp in defs_param.iterrows():
-        parametro=str(defp.get('Parametro','')).upper()
-        id_variable=request.form.get(f'param_{parametro}','')
-        if str(id_variable).strip():
-            params.loc[len(params)]={'IdFormulario':formulario_id,'IdPregunta':vid,'Operacion':operacion,'Parametro':parametro,'IdVariable':int(float(id_variable))}
-    params.to_csv(params_path,index=False)
+    param_keys=[f"param_{str(defp.get('Parametro','')).upper()}" for _,defp in defs_param.iterrows()]
+    if any(key in request.form for key in param_keys):
+        params=params[~((params['IdFormulario'].astype(str)==str(formulario_id)) & (params['Operacion'].astype(str).str.upper()==operacion) & (params['IdPregunta'].astype(str)==str(vid)))]
+        for _,defp in defs_param.iterrows():
+            parametro=str(defp.get('Parametro','')).upper()
+            id_variable=request.form.get(f'param_{parametro}','')
+            if str(id_variable).strip():
+                params.loc[len(params)]={'IdFormulario':formulario_id,'IdPregunta':vid,'Operacion':operacion,'Parametro':parametro,'IdVariable':int(float(id_variable))}
+        params.to_csv(params_path,index=False)
 
     defs_cfg=cargar_def_config_calculo(operacion)
     valores_cfg={}
@@ -1176,13 +1306,14 @@ def calculada_config_admin_guardar(vid):
         desde=request.form.getlist('desde')
         hasta=request.form.getlist('hasta')
         valor=request.form.getlist('valor')
+        comentarios=request.form.getlist('comentario_rango')
         nuevos=[]
-        for d,h,v in zip(desde,hasta,valor):
+        for d,h,v,c in zip(desde,hasta,valor,comentarios):
             if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
                 continue
-            nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v)})
+            nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Comentarios':str(c or '').strip()})
         path='data/rangos_tickets.csv'
-        actual=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+        actual=asegurar_columna_comentarios(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
         actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
         if nuevos:
             actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
@@ -1273,8 +1404,8 @@ def calcular_cotizacion(data):
         raise PermissionError
     if formulario_usa_servicios_excel(formulario_id) and isinstance(data.get('servicios'),list) and len(data.get('servicios',[]))>0:
         return calcular_servicios_excel(formulario_id, data.get('servicios',[]))
-    total_opciones=0; total_numericos=0; detalle=[]; items=[]; categorias={}
-    opciones=pd.read_csv('data/opciones.csv')
+    total_opciones=0; total_numericos=0; detalle=[]; items=[]; categorias={}; explicacion_usuario=[]
+    opciones=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv').fillna(''))
     uid=session.get('idusuario',0)
     try:
         uf=pd.read_csv('data/usuarios_formularios.csv')
@@ -1283,7 +1414,7 @@ def calcular_cotizacion(data):
         formularios_menu=formularios_menu[formularios_menu['IdFormulario'].isin(ids)]
     except:
         formularios_menu=pd.DataFrame(columns=['IdFormulario','Nombre'])
-    variables=pd.read_csv('data/variables.csv')
+    variables=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
     if 'IdFormulario' in variables.columns:
         variables=variables[pd.to_numeric(variables['IdFormulario'],errors='coerce')==formulario_id]
     usa_rango_tickets=any(
@@ -1301,9 +1432,10 @@ def calcular_cotizacion(data):
             valor_calc=calcular_calculada_generica(formulario_id,v,respuestas,opciones)
             categoria=str(v.get('Categoria','General'))
             nombre=str(v.get('Variable','Calculo'))
+            comentario=comentario_pregunta(v)
             total_opciones+=valor_calc
             detalle.append(f"{nombre}: ${valor_calc:,.0f}")
-            items.append({'pregunta':nombre,'respuesta':operacion_ext,'valor':valor_calc,'categoria':categoria})
+            items.append({'pregunta':nombre,'respuesta':operacion_ext,'valor':valor_calc,'categoria':categoria,'comentario':comentario})
             categorias[categoria]=categorias.get(categoria,0)+valor_calc
             continue
         if tipo_ext=='CALCULADA' and operacion_ext=='RANGO_TICKETS':
@@ -1325,19 +1457,45 @@ def calcular_cotizacion(data):
                 id_horario=parametros_rango.get('HORARIO_ATENCION'),
                 id_disponibilidad=parametros_rango.get('DISPONIBILIDAD')
             )
+            detalle_rango=detalle_rango_tickets(
+                cantidad,
+                delegada,
+                horario,
+                disponibilidad,
+                id_pregunta=vid,
+                id_horario=parametros_rango.get('HORARIO_ATENCION'),
+                id_disponibilidad=parametros_rango.get('DISPONIBILIDAD')
+            )
             valor_calc=tickets_cotizados*valor_unitario
             rango_aplicado=etiqueta_rango_tickets(tickets_totales,vid)
             total_opciones+=valor_calc
             detalle.append(f"Tickets y Operación Delegada ingresados: {tickets_totales:g}<br>Cotización en rango {rango_aplicado}<br>Valor por ticket con características seleccionadas: ${valor_unitario:,.0f}<br>Valor mensual: ${valor_calc:,.0f}")
             categoria=str(v.get('Categoria','General'))
+            comentario=comentario_rango_tickets(tickets_totales,vid)
             respuesta_costos=f'{tickets_totales:g}; cotización en rango {rango_aplicado}; valor por ticket con características seleccionadas: ${valor_unitario:,.0f}'
-            items.append({'pregunta':'Tickets y Operación Delegada ingresados','respuesta':respuesta_costos,'valor':valor_calc,'categoria':categoria})
+            items.append({'pregunta':'Tickets y Operación Delegada ingresados','respuesta':respuesta_costos,'valor':valor_calc,'categoria':categoria,'comentario':comentario})
+            explicacion_usuario.append({
+                'tipo':'rango_tickets',
+                'titulo':'Cálculo de tickets',
+                'tickets_ingresados':detalle_rango['tickets_ingresados'],
+                'tickets_cotizados':detalle_rango['tickets_cotizados'],
+                'rango':detalle_rango['rango'],
+                'valor_base':detalle_rango['valor_base'],
+                'valor_unitario':detalle_rango['valor_unitario'],
+                'valor_mensual':valor_calc,
+                'horario':detalle_rango['horario'],
+                'porcentaje_horario':detalle_rango['porcentaje_horario'],
+                'disponibilidad':detalle_rango['disponibilidad'],
+                'porcentaje_disponibilidad':detalle_rango['porcentaje_disponibilidad'],
+                'comentario':comentario
+            })
             categorias[categoria]=categorias.get(categoria,0)+valor_calc
             continue
         nombre=str(v['Variable'])
+        comentario_base=comentario_pregunta(v)
         tipo=str(v.get('Tipo','LISTA')).upper()
         if (usa_rango_tickets and vid in ids_parametros_rango) or vid in ids_operandos_genericos:
-            items.append({'pregunta':nombre,'respuesta':respuestas.get(vid,''),'valor':0,'categoria':str(v.get('Categoria','General'))})
+            items.append({'pregunta':nombre,'respuesta':respuestas.get(vid,''),'valor':0,'categoria':str(v.get('Categoria','General')),'comentario':comentario_base})
             continue
         if tipo=='NUMERO':
             valor=float(respuestas.get(vid,0) or 0)
@@ -1355,28 +1513,29 @@ def calcular_cotizacion(data):
             else:
                 res=valor+factor
             categoria=str(v.get('Categoria','General'))
-            total_numericos+=res; detalle.append(f"{nombre}: ${res:,.0f}"); items.append({'pregunta':nombre,'respuesta':valor,'valor':res,'categoria':categoria}); categorias[categoria]=categorias.get(categoria,0)+res
+            total_numericos+=res; detalle.append(f"{nombre}: ${res:,.0f}"); items.append({'pregunta':nombre,'respuesta':valor,'valor':res,'categoria':categoria,'comentario':comentario_base}); categorias[categoria]=categorias.get(categoria,0)+res
         else:
             resp=str(respuestas.get(vid,''))
             m=opciones[(opciones['IdVariable']==int(vid)) & (opciones['Opcion'].astype(str)==resp)]
             if not m.empty:
                 categoria=str(v.get('Categoria','General'))
                 val=float(m.iloc[0].get('Valor',0))
+                comentario=unir_comentarios(comentario_base,str(m.iloc[0].get('Comentarios','')).strip())
                 op=str(v.get('Operacion','FIJO')).upper()
                 if op=='PORCENTAJE':
                     base=sum(float(item.get('valor',0) or 0) for item in items)
                     valor_calculado=base*(val/100)
                     total_opciones+=valor_calculado
                     detalle.append(f"{nombre} ({resp}): {val:g}% = ${valor_calculado:,.0f}")
-                    items.append({'pregunta':nombre,'respuesta':resp,'valor':valor_calculado,'categoria':categoria,'porcentaje':val,'base_porcentaje':base})
+                    items.append({'pregunta':nombre,'respuesta':resp,'valor':valor_calculado,'categoria':categoria,'porcentaje':val,'base_porcentaje':base,'comentario':comentario})
                     categorias[categoria]=categorias.get(categoria,0)+valor_calculado
                 else:
                     total_opciones+=val
                     detalle.append(f"{nombre}: ${val:,.0f}")
-                    items.append({'pregunta':nombre,'respuesta':resp,'valor':val,'categoria':categoria})
+                    items.append({'pregunta':nombre,'respuesta':resp,'valor':val,'categoria':categoria,'comentario':comentario})
                     categorias[categoria]=categorias.get(categoria,0)+val
     total=aplicar_conceptos_formulario(formulario_id,items)
-    return {'total_numericos':total_numericos,'total_opciones':total_opciones,'total':round(total,2),'detalle':'<br>'.join(detalle),'items':items,'categorias':categorias_desde_items(items)}
+    return {'total_numericos':total_numericos,'total_opciones':total_opciones,'total':round(total,2),'detalle':'<br>'.join(detalle),'items':items,'categorias':categorias_desde_items(items),'explicacion_usuario':explicacion_usuario}
 
 @app.route('/guardar_cotizacion', methods=['POST'])
 @login_required
@@ -1443,6 +1602,10 @@ def generar_pdf():
                 pregunta=reparar_texto_mojibake(item.get('pregunta',''))
                 respuesta=reparar_texto_mojibake(item.get('respuesta',''))
                 elems.append(Paragraph(f"{escape(pregunta)}: {escape(respuesta)}",st['Normal']))
+                comentario=reparar_texto_mojibake(item.get('comentario','')).strip()
+                if comentario:
+                    comentario_pdf='<br/>'.join(str(escape(linea)) for linea in comentario.splitlines())
+                    elems.append(Paragraph(f"<b>Comentario:</b> {comentario_pdf}",st['Normal']))
             elems.append(Spacer(1,8))
     else:
         detalle=str(d.get('detalle',''))
@@ -1464,7 +1627,7 @@ def generar_pdf():
 @admin_required
 def pregunta_editar():
     if not auth(): return redirect('/login')
-    df=pd.read_csv('data/variables.csv')
+    df=asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
     if 'Visible' not in df.columns:
         df['Visible']=1
     pid=request.form.get('id','').strip()
@@ -1475,6 +1638,7 @@ def pregunta_editar():
         df.loc[idx,'Variable']=str(request.form['variable'])
         df.loc[idx,'Tipo']=str(request.form.get('tipo','LISTA'))
         df.loc[idx,'Operacion']=str(request.form.get('operacion','FIJO'))
+        df.loc[idx,'Comentarios']=str(request.form.get('comentarios',''))
         try:
             df.loc[idx,'Factor']=float(request.form.get('factor',0) or 0)
         except:
@@ -1486,7 +1650,7 @@ def pregunta_editar():
             factor=float(request.form.get('factor',0) or 0)
         except Exception:
             factor=0
-        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':int(request.form.get('visible',1) or 0)}
+        df.loc[len(df)]={'IdVariable':nid,'IdFormulario':int(request.form.get('formulario_id',0) or 0),'Categoria':request.form['categoria'],'Variable':request.form['variable'],'Tipo':request.form.get('tipo','LISTA'),'Operacion':request.form.get('operacion','FIJO'),'Factor':factor,'Estado':'Activo','Visible':int(request.form.get('visible',1) or 0),'Comentarios':str(request.form.get('comentarios',''))}
     df.to_csv('data/variables.csv',index=False)
     if request.headers.get('X-Requested-With')=='XMLHttpRequest':
         return jsonify({'ok':True,'mensaje':'Pregunta guardada correctamente'})
@@ -1532,23 +1696,24 @@ def reportes():
 
 
 
-@app.route('/opcion_eliminar/<int:vid>/<opcion>', methods=['POST'])
+@app.route('/opcion_eliminar/<int:vid>/<path:opcion>', methods=['POST'])
 @admin_required
 def opcion_eliminar(vid, opcion):
-    op=pd.read_csv('data/opciones.csv')
+    op=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv'))
     op=op[~((op['IdVariable']==vid) & (op['Opcion'].astype(str)==opcion))]
     op.to_csv('data/opciones.csv',index=False)
     return redirect(f'/opciones_admin/{vid}')
 
-@app.route('/opcion_editar/<int:vid>/<opcion>', methods=['POST'])
+@app.route('/opcion_editar/<int:vid>/<path:opcion>', methods=['POST'])
 @admin_required
 def opcion_editar(vid, opcion):
-    op=pd.read_csv('data/opciones.csv')
+    op=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv'))
     idx=op[(op['IdVariable']==vid) & (op['Opcion'].astype(str)==opcion)].index
     if len(idx):
         valor=normalizar_valor_perfil(vid,float(request.form.get('valor',0) or 0))
         op.loc[idx[0],'Opcion']=request.form['opcion']
         op.loc[idx[0],'Valor']=valor
+        op.loc[idx[0],'Comentarios']=request.form.get('comentarios','')
         op.to_csv('data/opciones.csv',index=False)
         sincronizar_valor_tarifa_perfil(vid,request.form['opcion'],valor)
     return redirect(f'/opciones_admin/{vid}')
@@ -1583,7 +1748,7 @@ def formulario(id_formulario):
     except:
         formularios_menu=pd.DataFrame(columns=['IdFormulario','Nombre'])
     variables=pd.read_csv('data/variables.csv')
-    opciones=pd.read_csv('data/opciones.csv')
+    opciones=asegurar_columna_comentarios(pd.read_csv('data/opciones.csv').fillna(''))
     variables=variables[variables['IdFormulario']==id_formulario]
     preguntas=[]
     for _,v in variables.iterrows():
@@ -1592,7 +1757,7 @@ def formulario(id_formulario):
         if not pregunta_visible(v) or tipo=='CALCULADA':
             continue
         opts=opciones[opciones['IdVariable']==vid]['Opcion'].astype(str).tolist()
-        preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts})
+        preguntas.append({'id':vid,'variable':v['Variable'],'tipo':tipo,'opciones':opts,'resumenes':comentarios_opciones_pregunta(opciones,vid),'comentario':comentario_pregunta(v)})
         
     from collections import defaultdict
     categorias=defaultdict(list)
@@ -1604,6 +1769,7 @@ def formulario(id_formulario):
     formularios=formularios_menu.to_dict('records')
     servicios_excel=formulario_modo_servicios_excel(id_formulario)
     catalogo_servicios=cargar_catalogo_servicios(id_formulario) if servicios_excel else {}
+    resumenes_preguntas={str(p['id']):p['resumenes'] for p in preguntas if p.get('resumenes')}
     formulario_nombre=''
     try:
         todos_formularios=pd.read_csv('data/formularios.csv').fillna('')
@@ -1620,7 +1786,8 @@ def formulario(id_formulario):
         formulario_actual=id_formulario,
         formulario_nombre=formulario_nombre,
         servicios_excel=servicios_excel,
-        catalogo_servicios=catalogo_servicios
+        catalogo_servicios=catalogo_servicios,
+        resumenes_preguntas=resumenes_preguntas
     )
 
 
@@ -1834,7 +2001,7 @@ def usuario_formularios_guardar():
 @admin_required
 def api_preguntas(formulario_id):
     import pandas as pd
-    df = pd.read_csv('data/variables.csv').fillna('')
+    df = asegurar_columna_comentarios(pd.read_csv('data/variables.csv').fillna(''))
     if 'Visible' not in df.columns:
         df['Visible']=1
 
@@ -1852,7 +2019,8 @@ def api_preguntas(formulario_id):
         'Tipo',
         'Operacion',
         'Factor',
-        'Visible'
+        'Visible',
+        'Comentarios'
     ]
 
     for c in columnas:
@@ -1979,10 +2147,25 @@ def cargar_factor_porcentaje_opcion(id_variable, opcion, predeterminado=None):
     return predeterminado
 
 
-def calcular_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponibilidad, id_pregunta, id_horario=None, id_disponibilidad=None):
+def cargar_porcentaje_opcion(id_variable, opcion, predeterminado=0.0):
+    try:
+        opciones=pd.read_csv('data/opciones.csv')
+        coincidencia=opciones[
+            (opciones['IdVariable'].astype(str)==str(id_variable)) &
+            (opciones['Opcion'].astype(str).str.strip().str.upper()==str(opcion).strip().upper())
+        ]
+        if not coincidencia.empty:
+            return float(coincidencia.iloc[0].get('Valor',0) or 0)
+    except Exception:
+        pass
+    return predeterminado
+
+
+def detalle_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponibilidad, id_pregunta, id_horario=None, id_disponibilidad=None):
     total_tickets = float(cantidad_tickets or 0) + float(operacion_delegada or 0)
     valor_base = None
     cantidad_cotizada = total_tickets
+    rango_aplicado = 'sin rango configurado'
     try:
         rangos=pd.read_csv('data/rangos_tickets.csv')
         rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
@@ -1993,21 +2176,57 @@ def calcular_rango_tickets(cantidad_tickets, operacion_delegada, horario, dispon
             (rangos['HastaNum']>=total_tickets)
         ]
         if not coincidencia.empty:
-            valor_base=float(coincidencia.iloc[0]['Valor'])
-            hasta=float(coincidencia.iloc[0]['HastaNum'])
+            fila=coincidencia.iloc[0]
+            valor_base=float(fila['Valor'])
+            desde=float(fila.get('DesdeNum',0) or 0)
+            hasta=float(fila.get('HastaNum',0) or 0)
+            hasta_txt='mayor' if hasta>=999999999 else f'{hasta:g}'
+            rango_aplicado=f'{desde:g} a {hasta_txt}'
             if hasta < 999999999:
                 cantidad_cotizada=hasta
+        elif not rangos.dropna(subset=['DesdeNum','HastaNum']).empty:
+            rangos_validos=rangos.dropna(subset=['DesdeNum','HastaNum']).sort_values('HastaNum')
+            ultimo=rangos_validos.iloc[-1]
+            if total_tickets > float(ultimo['HastaNum']):
+                valor_base=float(ultimo['Valor'])
+                cantidad_cotizada=total_tickets
+                rango_aplicado=f"{float(ultimo.get('DesdeNum',0) or 0):g} en adelante"
     except Exception:
         pass
     if valor_base is None:
         raise ValueError('No existe un rango configurado para la cantidad de tickets')
 
-    factor_horario = cargar_factor_porcentaje_opcion(id_horario, horario, 1.00)
-    factor_disp = cargar_factor_porcentaje_opcion(id_disponibilidad, disponibilidad, 1.00)
+    porcentaje_horario = cargar_porcentaje_opcion(id_horario, horario, 0.0)
+    porcentaje_disp = cargar_porcentaje_opcion(id_disponibilidad, disponibilidad, 0.0)
     if str(horario).strip().upper() == '7*24':
-        factor_disp = 1.00
+        porcentaje_disp = 0.0
 
-    return round(valor_base * factor_horario * factor_disp, 2), cantidad_cotizada
+    valor_unitario=round(valor_base * (1 + porcentaje_horario/100) * (1 + porcentaje_disp/100), 2)
+    return {
+        'tickets_ingresados': total_tickets,
+        'tickets_cotizados': cantidad_cotizada,
+        'rango': rango_aplicado,
+        'valor_base': valor_base,
+        'valor_unitario': valor_unitario,
+        'horario': horario,
+        'porcentaje_horario': porcentaje_horario,
+        'disponibilidad': disponibilidad,
+        'porcentaje_disponibilidad': porcentaje_disp,
+    }
+
+
+def calcular_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponibilidad, id_pregunta, id_horario=None, id_disponibilidad=None):
+    detalle=detalle_rango_tickets(
+        cantidad_tickets,
+        operacion_delegada,
+        horario,
+        disponibilidad,
+        id_pregunta,
+        id_horario,
+        id_disponibilidad
+    )
+
+    return detalle['valor_unitario'], detalle['tickets_cotizados']
 
 
 def etiqueta_rango_tickets(total_tickets, id_pregunta):
@@ -2026,9 +2245,36 @@ def etiqueta_rango_tickets(total_tickets, id_pregunta):
             hasta=float(fila.get('HastaNum',0) or 0)
             hasta_txt='mayor' if hasta>=999999999 else f'{hasta:g}'
             return f'{desde:g} a {hasta_txt}'
+        rangos_validos=rangos.dropna(subset=['DesdeNum','HastaNum']).sort_values('HastaNum')
+        if not rangos_validos.empty:
+            ultimo=rangos_validos.iloc[-1]
+            if float(total_tickets or 0) > float(ultimo.get('HastaNum',0) or 0):
+                return f"{float(ultimo.get('DesdeNum',0) or 0):g} en adelante"
     except Exception:
         pass
     return 'sin rango configurado'
+
+
+def comentario_rango_tickets(total_tickets, id_pregunta):
+    try:
+        rangos=asegurar_columna_comentarios(pd.read_csv('data/rangos_tickets.csv').fillna(''))
+        rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
+        rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
+        rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
+        total=float(total_tickets or 0)
+        coincidencia=rangos[
+            (rangos['DesdeNum']<=total) &
+            (rangos['HastaNum']>=total)
+        ]
+        if coincidencia.empty:
+            rangos_validos=rangos.dropna(subset=['DesdeNum','HastaNum']).sort_values('HastaNum')
+            if not rangos_validos.empty and total > float(rangos_validos.iloc[-1].get('HastaNum',0) or 0):
+                coincidencia=rangos_validos.tail(1)
+        if not coincidencia.empty:
+            return comentario_pregunta({'Comentarios':coincidencia.iloc[0].get('Comentarios','')})
+    except Exception:
+        pass
+    return ''
 
 
 @app.route('/api/rangos')
@@ -2038,16 +2284,17 @@ def api_rangos():
     ruta=os.path.join('data','rangos_tickets.csv')
     if not os.path.exists(ruta):
         return jsonify({'ok':True,'rangos':[]})
-    df=pd.read_csv(ruta)
+    df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
     if id_pregunta:
         df=df[df['IdPregunta'].astype(str)==id_pregunta]
     rangos=[]
     for _,r in df.iterrows():
         rangos.append({
-            'idPregunta':str(r.get('IdPregunta','')),
-            'desde':str(r.get('Desde','')),
-            'hasta':str(r.get('Hasta','')),
-            'valor':str(r.get('Valor','')),
+            'idPregunta':formato_numero_admin(r.get('IdPregunta','')),
+            'desde':formato_numero_admin(r.get('Desde','')),
+            'hasta':formato_numero_admin(r.get('Hasta','')),
+            'valor':formato_numero_admin(r.get('Valor','')),
+            'comentarios':str(r.get('Comentarios','')),
         })
     return jsonify({'ok':True,'rangos':rangos})
 
@@ -2061,11 +2308,18 @@ def api_guardar_rango():
     data=request.json or {}
     ruta=os.path.join('data','rangos_tickets.csv')
     existe=os.path.exists(ruta)
-    with open(ruta,'a',newline='',encoding='utf-8') as f:
-        w=csv.writer(f)
-        if not existe:
-            w.writerow(['IdPregunta','Desde','Hasta','Valor'])
-        w.writerow([data.get('idPregunta'),data.get('desde'),data.get('hasta'),data.get('valor')])
+    if existe:
+        df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
+    else:
+        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
+    df.loc[len(df)]={
+        'IdPregunta':data.get('idPregunta'),
+        'Desde':data.get('desde'),
+        'Hasta':data.get('hasta'),
+        'Valor':data.get('valor'),
+        'Comentarios':data.get('comentarios',''),
+    }
+    df.to_csv(ruta,index=False)
     return jsonify({'ok':True})
 
 
@@ -2080,10 +2334,10 @@ def api_guardar_rangos_todos():
 
     ruta=os.path.join('data','rangos_tickets.csv')
     if os.path.exists(ruta):
-        df=pd.read_csv(ruta)
+        df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
         df=df[df['IdPregunta'].astype(str)!=id_pregunta]
     else:
-        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor'])
+        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
 
     nuevos=[]
     for r in rangos:
@@ -2092,6 +2346,7 @@ def api_guardar_rangos_todos():
             'Desde':r.get('desde',''),
             'Hasta':r.get('hasta',''),
             'Valor':r.get('valor',''),
+            'Comentarios':r.get('comentarios',''),
         })
     if nuevos:
         df=pd.concat([df,pd.DataFrame(nuevos)],ignore_index=True)

@@ -17,6 +17,36 @@
  border-radius:10px;
  background:white;
 }
+.acciones-pregunta{
+ display:flex;
+ gap:4px;
+ align-items:center;
+ flex-wrap:nowrap;
+ white-space:nowrap;
+ min-width:230px;
+}
+.acciones-pregunta .btn{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ margin:0;
+}
+.acciones-pregunta form{
+ display:inline-flex!important;
+ margin:0;
+}
+table th:last-child,
+table td:last-child{
+ min-width:230px;
+}
+table td:last-child .btn,
+table td:last-child button{
+ white-space:nowrap;
+}
+table td:last-child form{
+ display:inline-flex!important;
+ margin:0;
+}
 </style>
 
 
@@ -181,11 +211,12 @@ document.addEventListener('DOMContentLoaded',function(){
 <option value="0">Invisible</option>
 </select>
 </div>
+<div class="col-md-12"><textarea class="form-control" id="comentarios" rows="2" placeholder="Comentarios de la pregunta"></textarea></div>
 <div class="col-md-2"><button type="button" class="btn btn-primary" onclick="guardarPreguntaAdmin()">Guardar / Actualizar</button></div>
 </div>
 
 <table class="table">
-<thead><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Acciones</th></tr></thead>
+<thead><tr><th>ID</th><th>Categoria</th><th>Pregunta</th><th>Tipo</th><th>Visible</th><th>Comentarios</th><th>Acciones</th></tr></thead>
 <tbody id="preguntasBody"></tbody>
 </table>
 </div>
@@ -218,12 +249,13 @@ setTimeout(()=>{ if(typeof cargarFormularios==='function') cargarFormularios();}
 <div class='col-md-2'><select class='form-control' id='operacion' name='operacion'><option value='FIJO'>FIJO</option><option value='SUMAR'>SUMAR</option><option value='MULTIPLICAR'>MULTIPLICAR</option><option value='RANGO_TICKETS'>RANGO</option><option value='PORCENTAJE'>% PORCENTAJE</option><option value='SERVICIOS_EXCEL'>SERVICIOS EXCEL</option></select></div>
 <div class='col-md-1'><input class='form-control' id='factor' name='factor' type='number' step='0.01' placeholder='Factor'></div>
 <div class='col-md-1'><select class='form-control' id='visible' name='visible'><option value='1'>Visible</option><option value='0'>Invisible</option></select></div>
+<div class='col-md-12'><textarea class='form-control' id='comentarios' name='comentarios' rows='2' placeholder='Comentarios de la pregunta'></textarea></div>
 <div class='col-md-2'><button class='btn btn-primary'>Guardar / Actualizar</button></div>
 </form><hr>
 {{tabla|safe}}
 {% endif %}
 <script>
-function editar(id,c,v,t,o,f,visible){
+function editar(id,c,v,t,o,f,visible,comentarios=''){
 document.getElementById('id').value=id;
 document.getElementById('categoria').value=c;
 document.getElementById('variable').value=v;
@@ -231,6 +263,7 @@ document.getElementById('tipo').value=t;
 document.getElementById('operacion').value=o;
 document.getElementById('factor').value=f;
 if(document.getElementById('visible'))document.getElementById('visible').value=String(String(visible)==='0' ? 0 : 1);
+if(document.getElementById('comentarios'))document.getElementById('comentarios').value=comentarios||'';
 window.scrollTo(0,0);
 }
 </script>
@@ -408,6 +441,7 @@ function crearFormulario(){
    });
 }
 function eliminarFormulario(id){
+ if(!confirm('¿Eliminar el formulario?')) return;
  fetch('/formulario_eliminar/'+id,{method:'POST'}).then(()=>{cargarFormularios();location.reload();});
 }
 </script>
@@ -637,7 +671,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 <script>
-function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor,visible){
+function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor,visible,comentarios=''){
  document.getElementById('id').value=id;
  document.getElementById('categoria').value=categoria||'';
  document.getElementById('variable').value=variable||'';
@@ -645,6 +679,7 @@ function editarPreguntaAdmin(id,categoria,variable,tipo,operacion,factor,visible
  if(document.getElementById('operacion'))document.getElementById('operacion').value=operacion||'FIJO';
  if(document.getElementById('factor'))document.getElementById('factor').value=factor||0;
  if(document.getElementById('visible'))document.getElementById('visible').value=String(String(visible)==='0' ? 0 : 1);
+ if(document.getElementById('comentarios'))document.getElementById('comentarios').value=comentarios||'';
  actualizarFactorPorTipo();
  window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -682,6 +717,7 @@ function guardarPreguntaAdmin(){
  if(!tipo){alert('Debe seleccionar el Tipo.');document.getElementById('tipo')?.focus();return;}
  if(!operacion){alert('Debe seleccionar la Operación.');document.getElementById('operacion')?.focus();return;}
  const fd=new FormData();
+ fd.append('_csrf_token','{{ csrf_token() }}');
  fd.append('id',document.getElementById('id')?.value||'');
  fd.append('categoria',document.getElementById('categoria')?.value||'');
  fd.append('variable',document.getElementById('variable')?.value||'');
@@ -689,6 +725,7 @@ function guardarPreguntaAdmin(){
  fd.append('operacion',document.getElementById('operacion')?.value||'FIJO');
  fd.append('factor',factor || 0);
  fd.append('visible',document.getElementById('visible')?.value||1);
+ fd.append('comentarios',document.getElementById('comentarios')?.value||'');
  fd.append('formulario_id',document.getElementById('frmPreguntas')?.value||'');
  fetch('/pregunta_editar',{
    method:'POST',
@@ -698,6 +735,7 @@ function guardarPreguntaAdmin(){
    .then(x=>{
       alert(x.mensaje||'Pregunta guardada');
       document.getElementById('id').value='';
+      if(document.getElementById('comentarios'))document.getElementById('comentarios').value='';
       cargarPreguntasFormulario();
    })
    .catch(e=>alert('Error guardando la pregunta'));
@@ -735,16 +773,17 @@ function cargarPreguntasFormulario(){
        <td>${p.Variable||''}</td>
        <td>${p.Tipo||'LISTA'}</td>
        <td>${String(p.Visible)==='0' ? 'Invisible' : 'Visible'}</td>
-       <td>
-       <button class="btn btn-warning btn-sm" onclick="editarPreguntaAdmin('${p.IdVariable||""}','${p.Categoria||""}','${p.Variable||""}','${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}','${p.Factor||0}','${p.Visible ?? 1}')">Editar</button>
+       <td>${p.Comentarios||''}</td>
+       <td><div class="acciones-pregunta">
+       <button class="btn btn-warning btn-sm" onclick='editarPreguntaAdmin(${JSON.stringify(p.IdVariable||"")},${JSON.stringify(p.Categoria||"")},${JSON.stringify(p.Variable||"")},${JSON.stringify(p.Tipo||"LISTA")},${JSON.stringify(p.Operacion||"FIJO")},${JSON.stringify(p.Factor||0)},${JSON.stringify(p.Visible ?? 1)},${JSON.stringify(p.Comentarios||"")})'>Editar</button>
        <button class="btn btn-danger btn-sm" onclick="eliminarPreguntaAdmin(${p.IdVariable})">Eliminar</button>
        ${ (p.Tipo||'LISTA')==='NUMERO' ? '' : `<button class="btn btn-info btn-sm" onclick="configurarPreguntaAdmin(${p.IdVariable},'${p.Tipo||"LISTA"}','${p.Operacion||"FIJO"}')">Configurar</button>` }
-       </td>
+       </div></td>
        </tr>`;
    });
-   document.getElementById('preguntasBody').innerHTML=h||'<tr><td colspan="6">Sin preguntas</td></tr>';
+   document.getElementById('preguntasBody').innerHTML=h||'<tr><td colspan="7">Sin preguntas</td></tr>';
  }).catch(e=>{
-   document.getElementById('preguntasBody').innerHTML='<tr><td colspan="6">Error cargando preguntas</td></tr>';
+   document.getElementById('preguntasBody').innerHTML='<tr><td colspan="7">Error cargando preguntas</td></tr>';
  });
 }
 const oldCF=cargarFormularios;
@@ -1107,6 +1146,16 @@ document.addEventListener('click', function(ev){
   }
   target.classList.add('show','active');
   target.style.display='block';
+});
+</script>
+
+<script>
+document.addEventListener('submit',function(e){
+ const form=e.target;
+ const accion=String(form.getAttribute('action')||'').toLowerCase();
+ if(accion.includes('eliminar') && !confirm('¿Confirma que desea eliminar este registro?')){
+   e.preventDefault();
+ }
 });
 </script>
 </body></html>

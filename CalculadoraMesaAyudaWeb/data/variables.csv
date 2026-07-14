@@ -1,53 +1,61 @@
-IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible
-1,1,Cobertura,Horario de atención,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-2,1,Cobertura,Idioma,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-3,1,Canales,Teléfono,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-4,1,Canales,Correo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-5,1,Canales,WhatsApp,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-6,1,Canales,"Web,Chat",SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-7,1,Infraestructura,Ubicación ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-8,1,Infraestructura,Puesto de Trabajo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-9,1,Infraestructura,Diadema,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-10,1,Infraestructura,Pantalla Adicional,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-11,1,Infraestructura,PC,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-12,1,Infraestructura,Herramienta ITSM,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-13,1,Infraestructura,VPN,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-14,1,Infraestructura,Herramienta Ofimática,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-15,1,Infraestructura,Implementación de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-16,1,Infraestructura,Plataforma monitoreo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-17,1,Infraestructura,Canal dedicado,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-18,1,Monitoreo,Servidores Pivote,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-19,1,Operación,Usuarios soportados,NUMERO,MULTIPLICAR,100.0,Activo,1
-20,1,Operación,Tickets mensuales,NUMERO,MULTIPLICAR,10.0,Activo,1
-21,1,Operación,Sedes,NUMERO,MULTIPLICAR,3.0,Activo,1
-22,1,Operación,Soporte,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-23,1,Operación,SLA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-24,1,Operación,Modelo de Gobierno,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-25,1,Operación,Desplazamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-26,1,Operación,Informe de Gestión,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-27,1,Operación,Imprevisto,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-28,1,RRHH,Analistas N1,NUMERO,MULTIPLICAR,1000000.0,Activo,1
-29,1,RRHH,Analistas N2,NUMERO,MULTIPLICAR,2000000.0,Activo,1
-30,1,RRHH,Gerente de Servicio,NUMERO,MULTIPLICAR,500000.0,Activo,1
-31,1,RRHH,Gerente de Proyecto,NUMERO,MULTIPLICAR,800000.0,Activo,1
-32,1,RRHH,Reclutamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-33,1,RRHH,Capacitación,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-34,1,RRHH,Operativos del talento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-35,1,Contractuales,Poliza /Contractuales,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-36,1,Contractuales,Impuesto Timbre,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-37,1,Contractuales,Impuesto Estampillas,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-38,1,Contractuales,ICA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-39,1,Contractuales,Comisiones,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-40,1,Contractuales,Costo Administrativo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-41,1,Contractuales,Costo Financiera de la Cartera,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1
-42,1,prueba,prueba,NUMERO,FIJO,,Activo,1
-45,1,prueba,prueba,LISTA,FIJO,0.0,Activo,1
-46,2,Volumen,Cantidad de Tickets,NUMERO,FIJO,0.0,Activo,1
-47,2,Volumen,Cantidad Tickets Operación Delegada,NUMERO,FIJO,0.0,Activo,1
-48,2,Servicio,Horario de Atención,LISTA,FIJO,0.0,Activo,1
-49,2,Servicio,¿Requiere disponibilidad?,LISTA,PORCENTAJE,0.0,Activo,1
-50,2,Volumen,Valor Unitario Ticket,CALCULADA,RANGO_TICKETS,0.0,Activo,0
-51,2,Servicio,Idioma,LISTA,PORCENTAJE,0.0,Activo,1
-30117,2,Servicio,	Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1
-30118,1,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1
-30119,2,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1
+IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible,Comentarios
+1,1,Cobertura,Horario de atención,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+2,1,Cobertura,Idioma,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+3,1,Canales,Teléfono,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+4,1,Canales,Correo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+5,1,Canales,WhatsApp,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+6,1,Canales,"Web,Chat",SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+7,1,Infraestructura,Ubicación ,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+8,1,Infraestructura,Puesto de Trabajo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+9,1,Infraestructura,Diadema,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+10,1,Infraestructura,Pantalla Adicional,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+11,1,Infraestructura,PC,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+12,1,Infraestructura,Herramienta ITSM,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+13,1,Infraestructura,VPN,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+14,1,Infraestructura,Herramienta Ofimática,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+15,1,Infraestructura,Implementación de Herramienta,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+16,1,Infraestructura,Plataforma monitoreo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+17,1,Infraestructura,Canal dedicado,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+18,1,Monitoreo,Servidores Pivote,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+19,1,Operación,Usuarios soportados,NUMERO,MULTIPLICAR,100.0,Activo,1,
+20,1,Operación,Tickets mensuales,NUMERO,MULTIPLICAR,10.0,Activo,1,
+21,1,Operación,Sedes,NUMERO,MULTIPLICAR,3.0,Activo,1,
+22,1,Operación,Soporte,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+23,1,Operación,SLA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+24,1,Operación,Modelo de Gobierno,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+25,1,Operación,Desplazamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+26,1,Operación,Informe de Gestión,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+27,1,Operación,Imprevisto,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+28,1,RRHH,Analistas N1,NUMERO,MULTIPLICAR,1000000.0,Activo,1,
+29,1,RRHH,Analistas N2,NUMERO,MULTIPLICAR,2000000.0,Activo,1,
+30,1,RRHH,Gerente de Servicio,NUMERO,MULTIPLICAR,500000.0,Activo,1,
+31,1,RRHH,Gerente de Proyecto,NUMERO,MULTIPLICAR,800000.0,Activo,1,
+32,1,RRHH,Reclutamiento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+33,1,RRHH,Capacitación,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+34,1,RRHH,Operativos del talento,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+35,1,Contractuales,Poliza /Contractuales,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+36,1,Contractuales,Impuesto Timbre,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+37,1,Contractuales,Impuesto Estampillas,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+38,1,Contractuales,ICA,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+39,1,Contractuales,Comisiones,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+40,1,Contractuales,Costo Administrativo,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+41,1,Contractuales,Costo Financiera de la Cartera,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
+42,1,prueba,prueba,NUMERO,FIJO,,Activo,1,
+45,1,prueba,prueba,LISTA,FIJO,0.0,Activo,1,
+46,2,Volumen,Cantidad de Tickets,NUMERO,FIJO,0.0,Activo,1,
+47,2,Volumen,Cantidad Tickets Operación Delegada,NUMERO,FIJO,0.0,Activo,1,
+48,2,Servicio,Horario de Atención,LISTA,FIJO,0.0,Activo,1,
+49,2,Servicio,¿Requiere disponibilidad?,LISTA,PORCENTAJE,0.0,Activo,1,
+50,2,Volumen,Valor Unitario Ticket,CALCULADA,RANGO_TICKETS,0.0,Activo,0,
+51,2,Servicio,Idioma,LISTA,PORCENTAJE,0.0,Activo,1,
+30117,2,Servicio,Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1,
+30118,1,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1,
+30119,2,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1,
+30201,302,Volumen,Cantidad de Tickets,NUMERO,FIJO,0.0,Activo,1,
+30202,302,Volumen,Cantidad Tickets Operación Delegada,NUMERO,FIJO,0.0,Activo,1,
+30203,302,Servicio,Horario de Atención,LISTA,FIJO,0.0,Activo,1,
+30204,302,Servicio,¿Requiere disponibilidad?,LISTA,PORCENTAJE,0.0,Activo,1,
+30205,302,Costos,Valor Unitario Ticket,CALCULADA,RANGO_TICKETS,0.0,Activo,0,
+30206,302,Servicio,Nivel de Idioma,LISTA,PORCENTAJE,0.0,Activo,1,
+30207,302,Servicio,Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1,
+30208,302,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1,
