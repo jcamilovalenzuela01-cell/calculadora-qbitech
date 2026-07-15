@@ -1,4 +1,5 @@
-IdFormulario,Nombre,Descripcion,Activo,ModoServiciosExcel
+﻿IdFormulario,Nombre,Descripcion,Activo,ModoServiciosExcel
 1,Mesa de Ayuda,Formulario principal,1,0
 2,Mesa de Ayuda IAFIS,Mesa de Ayuda IAFIS,1,0
 302,Mesa de Ayuda IAFIS v2,Mesa de Ayuda IAFIS v2,1,0
+200,Calculadora QBITIC Servicios,Formulario basado en hoja CALCULADORA del Excel QBITIC 2024,1,1

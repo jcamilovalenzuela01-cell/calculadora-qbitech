@@ -1,4 +1,4 @@
-IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible,Comentarios
+﻿IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible,Comentarios
 1,1,Cobertura,Horario de atención,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
 2,1,Cobertura,Idioma,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
 3,1,Canales,Teléfono,SELECCIÓN LISTA DESPLEGABLE,FIJO,0.0,Activo,1,
@@ -59,3 +59,8 @@ IdVariable,IdFormulario,Categoria,Variable,Tipo,Operacion,Factor,Estado,Visible,
 30206,302,Servicio,Nivel de Idioma,LISTA,PORCENTAJE,0.0,Activo,1,
 30207,302,Servicio,Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1,
 30208,302,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1,
+2001,200,Servicio,Producto/Servicio,LISTA,FIJO,0.0,Activo,1,
+2002,200,Servicio,Perfil,LISTA,FIJO,0.0,Activo,1,
+2003,200,Servicio,Porcentaje,NUMERO,FIJO,0.0,Activo,1,
+2004,200,Servicio,Disponibilidad,LISTA,FIJO,0.0,Activo,1,
+2005,200,Costos,Total Servicio,CALCULADA,SERVICIOS_EXCEL,0.0,Activo,0,

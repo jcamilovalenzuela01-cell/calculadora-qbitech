@@ -1,4 +1,5 @@
-IdFormulario,ProductoServicio,Perfil,SalarioTotal,DescripcionPerfil
+﻿IdFormulario,ProductoServicio,Perfil,SalarioTotal,DescripcionPerfil
+301,BD,BD. Junior Prueba,1000000.0,Perfil de prueba para SERVICIOS_EXCEL
 200,Gerencia,Gerente de Servicio,10684167.0,Gerente de Servicio
 200,BD,BD. Junior (Tareas de Operación),8134167.0,Junior (Tareas de Operación)
 200,BD,BD. Senior (Administración y Soporte N1/N2),12384167.0,Senior (Administración y Soporte N1/N2)
@@ -44,4 +45,3 @@ IdFormulario,ProductoServicio,Perfil,SalarioTotal,DescripcionPerfil
 200,INFORMES Y REPORTERIA,IR. Senior (Administración y Soporte N1/N2),5244167.0,Senior (Administración y Soporte N1/N2)
 200,INFORMES Y REPORTERIA,IR. Master (Administración y Soporte N3),7284167.0,Master (Administración y Soporte N3)
 200,INFORMES Y REPORTERIA,IR. Master (Administración y Soporte N3) Oracle,10684167.0,Master (Administración y Soporte N3) Oracle
-301,BD,BD. Junior Prueba,1000000.0,Perfil de prueba para SERVICIOS_EXCEL
