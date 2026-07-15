@@ -122,6 +122,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <hr>
 <h3>Administración de Usuarios</h3>
 <form id='frmUsuarioNuevo' class='row g-2 mb-3'>
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 <div class='col-md-2'><input class='form-control' name='usuario' placeholder='Usuario'></div>
 <div class='col-md-2'><input class='form-control' name='clave' placeholder='Clave'></div>
 <div class='col-md-3'><input class='form-control' name='nombre' placeholder='Nombre'></div>
@@ -645,13 +646,20 @@ document.addEventListener('DOMContentLoaded',()=>{
     e.preventDefault();
 
     const fd=new FormData(frm);
+    const token=frm.querySelector('[name="_csrf_token"]')?.value || '';
 
     const r=await fetch('/usuario_guardar',{
        method:'POST',
-       body:fd
+       body:fd,
+       headers:{'X-CSRF-Token':token}
     });
 
-    const d=await r.json();
+    let d;
+    try{
+      d=await r.json();
+    }catch(err){
+      d={ok:false,mensaje:'No se pudo confirmar el guardado del usuario'};
+    }
 
     document.getElementById('mensajeTexto').innerText =
       d.ok ? 'Usuario creado correctamente' : (d.mensaje || 'Error');
