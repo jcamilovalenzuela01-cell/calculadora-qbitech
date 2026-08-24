@@ -459,9 +459,14 @@ function eliminarFormulario(id){
 <div class="modal-header"><h5>Editar Usuario</h5></div>
 <div class="modal-body">
 <form id="editarUsuarioForm">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 <input type="hidden" id="eid" name="idusuario">
+<label>Usuario</label>
 <input class="form-control mb-2" id="eusuario" name="usuario">
-<input class="form-control mb-2" id="eclave" name="clave" type="password"><br><label>Nombre</label><input class="form-control mb-2" id="enombre" name="nombre">
+<label>Nueva contraseña</label>
+<input class="form-control mb-1" id="eclave" name="clave" type="password" autocomplete="new-password" placeholder="Dejar vacía para conservar la actual">
+<div class="form-text mb-2">Solo se cambia si escribes una nueva contraseña. Mínimo 8 caracteres.</div>
+<label>Nombre</label><input class="form-control mb-2" id="enombre" name="nombre">
 <select class="form-control mb-2" id="erol" name="rol"><option>Administrador</option><option>Operador</option><option>Consulta</option></select>
 <button class="btn btn-primary">Actualizar</button>
 </form></div></div></div></div>
@@ -469,7 +474,7 @@ function eliminarFormulario(id){
 function abrirEditar(b){
 document.getElementById('eid').value=b.dataset.id||'';
 if(document.getElementById('eusuario')) document.getElementById('eusuario').value=b.dataset.usuario||'';
-if(document.getElementById('enombre')) var c=document.getElementById('eclave'); if(c) c.value='';
+var c=document.getElementById('eclave'); if(c) c.value='';
 document.getElementById('enombre').value=b.dataset.nombre||'';
 if(document.getElementById('erol')) document.getElementById('erol').value=b.dataset.rol||'';
 }
@@ -491,6 +496,10 @@ if(fila){
  }
 }
 bootstrap.Modal.getInstance(document.getElementById('editarUsuarioModal'))?.hide();
+}else{
+let x={};
+try{x=await r.json();}catch(err){}
+alert(x.mensaje||'No fue posible actualizar el usuario');
 }
 }});
 </script>

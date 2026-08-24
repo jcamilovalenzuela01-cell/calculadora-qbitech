@@ -236,14 +236,37 @@ def cargar_catalogo_servicios(formulario_id):
         tarifas=pd.DataFrame(columns=['ProductoServicio','Perfil','SalarioTotal'])
     productos=sorted({reparar_texto_mojibake(p) for p in tarifas['ProductoServicio'].astype(str).unique().tolist()}) if not tarifas.empty else []
     perfiles=[]
+    perfiles_hora=[]
+    parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
+    id_perfil_hora=str(parametros.get('PERFIL_HORA',''))
+    valores_hora={}
+    if id_perfil_hora:
+        try:
+            opciones=pd.read_csv('data/opciones.csv').fillna('')
+            opciones_hora=opciones[opciones['IdVariable'].astype(str)==id_perfil_hora]
+            valores_hora={
+                clave_texto(row.get('Opcion','')):float(row.get('Valor',0) or 0)
+                for _,row in opciones_hora.iterrows()
+            }
+        except Exception:
+            valores_hora={}
     for _,fila in tarifas.sort_values(['ProductoServicio','Perfil']).iterrows():
+        salario=float(fila.get('SalarioTotal',0) or 0)
+        perfil_txt=reparar_texto_mojibake(fila.get('Perfil',''))
+        perfil_key=clave_texto(perfil_txt)
+        valor_hora=valores_hora.get(perfil_key, round((salario/164)*1.20, 2) if salario else 0)
         perfiles.append({
             'producto':reparar_texto_mojibake(fila.get('ProductoServicio','')),
-            'perfil':reparar_texto_mojibake(fila.get('Perfil','')),
-            'salario':float(fila.get('SalarioTotal',0) or 0),
+            'perfil':perfil_txt,
+            'salario':salario,
         })
-    parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
+        perfiles_hora.append({
+            'producto':reparar_texto_mojibake(fila.get('ProductoServicio','')),
+            'perfil':perfil_txt,
+            'salario':valor_hora,
+        })
     id_disponibilidad=str(parametros.get('DISPONIBILIDAD','2004'))
+    id_horas_rango=str(parametros.get('HORAS_RANGO','2007'))
     try:
         opciones=pd.read_csv('data/opciones.csv').fillna('')
         disponibilidad=opciones[opciones['IdVariable'].astype(str)==id_disponibilidad].to_dict('records')
@@ -255,9 +278,43 @@ def cargar_catalogo_servicios(formulario_id):
             {'Opcion':'5X8','Valor':0},
             {'Opcion':'7X24','Valor':35},
         ]
+    rangos_horas=[]
+    if id_horas_rango:
+        try:
+            rangos=asegurar_columnas_rangos(pd.read_csv('data/rangos_tickets.csv').fillna(''))
+            rangos=rangos[rangos['IdPregunta'].astype(str)==id_horas_rango].copy()
+            rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
+            rangos=rangos.sort_values('DesdeNum')
+            for _,rango in rangos.iterrows():
+                desde=formato_numero_admin(rango.get('Desde',''))
+                hasta=formato_numero_admin(rango.get('Hasta',''))
+                valor=formato_numero_admin(rango.get('Valor',''))
+                if not valor:
+                    valor=hasta
+                etiqueta=f"{desde} - {hasta}"
+                rangos_horas.append({
+                    'desde':desde,
+                    'hasta':hasta,
+                    'valor':valor,
+                    'etiqueta':etiqueta,
+                    'porcentaje':formato_numero_admin(rango.get('Porcentaje',0)),
+                    'comentarios':comentario_pregunta(rango),
+                })
+        except Exception:
+            rangos_horas=[]
+    if not rangos_horas:
+        rangos_horas=[
+            {'desde':'0','hasta':'20','valor':'20','etiqueta':'0 - 20','porcentaje':'0','comentarios':'Rango de 0 a 20 horas'},
+            {'desde':'21','hasta':'40','valor':'40','etiqueta':'21 - 40','porcentaje':'-1','comentarios':'Rango de 21 a 40 horas'},
+            {'desde':'41','hasta':'60','valor':'60','etiqueta':'41 - 60','porcentaje':'-2','comentarios':'Rango de 41 a 60 horas'},
+            {'desde':'61','hasta':'100','valor':'100','etiqueta':'61 - 100','porcentaje':'-3','comentarios':'Rango de 61 a 100 horas'},
+            {'desde':'101','hasta':'150','valor':'150','etiqueta':'101 - 150','porcentaje':'-4','comentarios':'Rango de 101 a 150 horas'},
+        ]
     return {
         'productos':productos,
         'perfiles':perfiles,
+        'perfiles_hora':perfiles_hora,
+        'rangos_horas':rangos_horas,
         'disponibilidades':[
             {'opcion':reparar_texto_mojibake(d.get('Opcion','')), 'valor':float(d.get('Valor',0) or 0)}
             for d in disponibilidad
@@ -268,23 +325,27 @@ def cargar_catalogo_servicios(formulario_id):
 def cargar_config_servicios(formulario_id):
     valores={
         'APLICAR_DISPONIBILIDAD':1.0,
+        'HORAS_MES':164.0,
+        'RECARGO_HORA_PCT':20.0,
     }
-    try:
-        if os.path.exists('data/calculos_config.csv'):
-            cfg=pd.read_csv('data/calculos_config.csv').fillna('')
-            cfg=cfg[
-                (cfg['IdFormulario'].astype(str)==str(formulario_id))
-                & (cfg['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL')
-            ]
-        else:
-            cfg=pd.read_csv('data/servicios_config.csv').fillna('')
-            cfg=cfg[cfg['IdFormulario'].astype(str)==str(formulario_id)]
-        for _,fila in cfg.iterrows():
-            parametro=str(fila.get('Parametro','')).strip().upper()
-            if parametro:
-                valores[parametro]=float(fila.get('Valor',0) or 0)
-    except Exception:
-        pass
+    fuentes=[
+        ('data/calculos_config.csv', lambda df: df[
+            (df['IdFormulario'].astype(str)==str(formulario_id))
+            & (df['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL')
+        ]),
+        ('data/servicios_config.csv', lambda df: df[df['IdFormulario'].astype(str)==str(formulario_id)]),
+    ]
+    for ruta,filtrar in fuentes:
+        try:
+            if not os.path.exists(ruta):
+                continue
+            cfg=filtrar(pd.read_csv(ruta).fillna(''))
+            for _,fila in cfg.iterrows():
+                parametro=str(fila.get('Parametro','')).strip().upper()
+                if parametro:
+                    valores[parametro]=float(fila.get('Valor',0) or 0)
+        except Exception:
+            pass
     return valores
 
 
@@ -524,6 +585,14 @@ def asegurar_columna_comentarios(df):
     return df
 
 
+def asegurar_columnas_rangos(df):
+    df=asegurar_columna_comentarios(df)
+    if 'Porcentaje' not in df.columns:
+        df['Porcentaje']=0
+    df['Porcentaje']=df['Porcentaje'].fillna(0)
+    return df
+
+
 def comentarios_opciones_pregunta(opciones_df, id_variable):
     comentarios={}
     opciones_df=asegurar_columna_comentarios(opciones_df.fillna(''))
@@ -559,9 +628,12 @@ def unir_comentarios(*comentarios):
     return '\n\n'.join(limpios)
 
 
-def valor_tarifa_perfil(formulario_id, producto, perfil):
+def valor_tarifa_perfil(formulario_id, producto, perfil, tipo_cotizacion='SERVICIO'):
     parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
-    id_perfil=str(parametros.get('PERFIL',''))
+    if str(tipo_cotizacion).upper()=='HORAS':
+        id_perfil=str(parametros.get('PERFIL_HORA') or parametros.get('PERFIL',''))
+    else:
+        id_perfil=str(parametros.get('PERFIL',''))
     try:
         opciones=pd.read_csv('data/opciones.csv').fillna('')
         opciones_filtradas=opciones[opciones['IdVariable'].astype(str)==id_perfil].copy()
@@ -580,7 +652,15 @@ def valor_tarifa_perfil(formulario_id, producto, perfil):
             & (tarifas['Perfil'].astype(str).map(clave_texto)==clave_texto(perfil))
         ]
         if not tarifa.empty:
-            return float(tarifa.iloc[0]['SalarioTotal'])
+            valor=float(tarifa.iloc[0]['SalarioTotal'])
+            if str(tipo_cotizacion).upper()=='HORAS':
+                config=cargar_config_servicios(formulario_id)
+                horas_mes=float(config.get('HORAS_MES',164) or 164)
+                recargo=float(config.get('RECARGO_HORA_PCT',20) or 0)
+                if horas_mes<=0:
+                    horas_mes=164
+                return (valor/horas_mes)*(1+(recargo/100))
+            return valor
     except Exception:
         pass
     return 0
@@ -596,6 +676,7 @@ def calcular_servicios_excel(formulario_id, servicios):
         tarifas=pd.DataFrame(columns=['ProductoServicio','Perfil','SalarioTotal'])
     parametros=cargar_parametros_calculo(formulario_id,'SERVICIOS_EXCEL')
     id_disponibilidad=str(parametros.get('DISPONIBILIDAD','2004'))
+    id_horas_rango=str(parametros.get('HORAS_RANGO',''))
     try:
         opciones=pd.read_csv('data/opciones.csv').fillna('')
         disponibilidades=opciones[opciones['IdVariable'].astype(str)==id_disponibilidad]
@@ -603,6 +684,9 @@ def calcular_servicios_excel(formulario_id, servicios):
         disponibilidades=pd.DataFrame(columns=['Opcion','Valor'])
     config=cargar_config_servicios(formulario_id)
     aplicar_disponibilidad=int(float(config.get('APLICAR_DISPONIBILIDAD',1) or 0))==1
+    horas_mes=float(config.get('HORAS_MES',160) or 160)
+    if horas_mes<=0:
+        horas_mes=160
     items=[]
     subtotal=0
     categorias={}
@@ -611,16 +695,37 @@ def calcular_servicios_excel(formulario_id, servicios):
         producto=str(servicio.get('producto_servicio','') or servicio.get('producto','')).strip()
         perfil=str(servicio.get('perfil','')).strip()
         disponibilidad=str(servicio.get('disponibilidad','')).strip()
+        tipo_cotizacion=str(servicio.get('tipo_cotizacion','SERVICIO') or 'SERVICIO').strip().upper()
         try:
             porcentaje=float(str(servicio.get('porcentaje',0) or 0).replace(',','.'))
         except Exception:
             porcentaje=0
-        if not producto and not perfil and porcentaje==0 and not disponibilidad:
+        try:
+            horas=float(str(servicio.get('horas',0) or 0).replace(',','.'))
+        except Exception:
+            horas=0
+        horas_rango=str(servicio.get('horas_rango','')).strip()
+        if tipo_cotizacion not in ('HORAS','SERVICIO'):
+            tipo_cotizacion='SERVICIO'
+        if not producto and not perfil and porcentaje==0 and horas==0 and not disponibilidad:
             continue
-        if not producto or not perfil or porcentaje<=0:
+        if not producto or not perfil:
             continue
-        salario=valor_tarifa_perfil(formulario_id, producto, perfil)
-        servicio_base=salario*(porcentaje/100)
+        if tipo_cotizacion=='HORAS' and horas<=0:
+            continue
+        if tipo_cotizacion!='HORAS' and porcentaje<=0:
+            continue
+        salario=valor_tarifa_perfil(formulario_id, producto, perfil, tipo_cotizacion)
+        if tipo_cotizacion=='HORAS':
+            valor_hora=salario
+            detalle_horas=detalle_rango_generico(horas,id_horas_rango) if id_horas_rango else {}
+            porcentaje_horas=float(detalle_horas.get('porcentaje',0) or 0)
+            servicio_base=(valor_hora*horas)*(1+(porcentaje_horas/100))
+        else:
+            valor_hora=0
+            porcentaje_horas=0
+            detalle_horas={}
+            servicio_base=salario*(porcentaje/100)
         recargo_pct=0
         disp=disponibilidades[disponibilidades['Opcion'].astype(str).str.upper()==disponibilidad.upper()]
         if aplicar_disponibilidad and not disp.empty:
@@ -631,7 +736,13 @@ def calcular_servicios_excel(formulario_id, servicios):
         producto_txt=reparar_texto_mojibake(producto)
         perfil_txt=reparar_texto_mojibake(perfil)
         disponibilidad_txt=reparar_texto_mojibake(disponibilidad or 'Sin disponibilidad')
-        respuesta=f"{producto_txt} | {perfil_txt} | {porcentaje:g}% | {disponibilidad_txt}"
+        if tipo_cotizacion=='HORAS':
+            horas_txt=reparar_texto_mojibake(horas_rango or detalle_horas.get('etiqueta','')) if (horas_rango or detalle_horas) else f"{horas:g} horas"
+            if horas_rango:
+                horas_txt=f"{horas_txt} ({horas:g} horas)"
+            respuesta=f"{producto_txt} | {perfil_txt} | {horas_txt} | {disponibilidad_txt}"
+        else:
+            respuesta=f"{producto_txt} | {perfil_txt} | {porcentaje:g}% | {disponibilidad_txt}"
         items.append({
             'pregunta':f'Servicio {indice}',
             'respuesta':respuesta,
@@ -639,6 +750,11 @@ def calcular_servicios_excel(formulario_id, servicios):
             'valor_calculado':round(total_linea,2),
             'categoria':'Servicio',
             'salario_base':salario,
+            'tipo_cotizacion':tipo_cotizacion,
+            'horas':horas,
+            'horas_mes':horas_mes,
+            'valor_hora':round(valor_hora,2),
+            'porcentaje_rango_horas':round(porcentaje_horas,2),
             'recargo_disponibilidad':round(recargo,2),
         })
         detalle.append(f"Servicio {indice}: ${total_linea:,.0f}")
@@ -1194,13 +1310,13 @@ def calculada_config_admin(vid):
             rangos=pd.read_csv('data/rangos_tickets.csv').fillna('')
             rangos=rangos[rangos['IdPregunta'].astype(str)==str(vid)]
         except Exception:
-            rangos=pd.DataFrame(columns=['Desde','Hasta','Valor','Comentarios'])
-        rangos=asegurar_columna_comentarios(rangos)
+            rangos=pd.DataFrame(columns=['Desde','Hasta','Valor','Porcentaje','Comentarios'])
+        rangos=asegurar_columnas_rangos(rangos)
         filas=''.join(
-            f"<tr><td><input class='form-control' name='desde' value='{escape(formato_numero_admin(r.get('Desde','')))}'></td><td><input class='form-control' name='hasta' value='{escape(formato_numero_admin(r.get('Hasta','')))}'></td><td><input class='form-control' name='valor' value='{escape(formato_numero_admin(r.get('Valor','')))}'></td><td><textarea class='form-control' name='comentario_rango' rows='2'>{escape(str(r.get('Comentarios','')))}</textarea></td></tr>"
+            f"<tr><td><input class='form-control' name='desde' value='{escape(formato_numero_admin(r.get('Desde','')))}'></td><td><input class='form-control' name='hasta' value='{escape(formato_numero_admin(r.get('Hasta','')))}'></td><td><input class='form-control' name='valor' value='{escape(formato_numero_admin(r.get('Valor','')))}'></td><td><input class='form-control' name='porcentaje_rango' value='{escape(formato_numero_admin(r.get('Porcentaje',0)))}' placeholder='0'></td><td><textarea class='form-control' name='comentario_rango' rows='2'>{escape(str(r.get('Comentarios','')))}</textarea></td></tr>"
             for _,r in rangos.iterrows()
         )
-        rangos_html=f"<hr><h5>Rangos</h5><table class='table'><thead><tr><th>Desde</th><th>Hasta</th><th>Valor Base</th><th>Comentario</th></tr></thead><tbody>{filas}<tr><td><input class='form-control' name='desde' placeholder='Desde'></td><td><input class='form-control' name='hasta' placeholder='Hasta'></td><td><input class='form-control' name='valor' placeholder='Valor Base'></td><td><textarea class='form-control' name='comentario_rango' rows='2' placeholder='Comentario'></textarea></td></tr></tbody></table>"
+        rangos_html=f"<hr><h5>Rangos</h5><p class='text-muted mb-2'>Use % ajuste para incrementar o reducir el valor del rango. Ejemplo: 0 no cambia, -1 descuenta 1%, 5 incrementa 5%.</p><table class='table'><thead><tr><th>Desde</th><th>Hasta</th><th>Valor Base</th><th>% ajuste</th><th>Comentario</th></tr></thead><tbody>{filas}<tr><td><input class='form-control' name='desde' placeholder='Desde'></td><td><input class='form-control' name='hasta' placeholder='Hasta'></td><td><input class='form-control' name='valor' placeholder='Valor Base'></td><td><input class='form-control' name='porcentaje_rango' placeholder='0'></td><td><textarea class='form-control' name='comentario_rango' rows='2' placeholder='Comentario'></textarea></td></tr></tbody></table>"
     comentario_actual=escape(comentario_pregunta({'Comentarios':pregunta.get('comentarios','')}))
     token=escape(csrf_token())
     if int(float(op.get('UsaRangos',0) or 0))==1:
@@ -1244,14 +1360,15 @@ def calculada_config_admin_guardar_rangos(vid):
     desde=request.form.getlist('desde')
     hasta=request.form.getlist('hasta')
     valor=request.form.getlist('valor')
+    porcentajes=request.form.getlist('porcentaje_rango')
     comentarios=request.form.getlist('comentario_rango')
     nuevos=[]
-    for d,h,v,c in zip(desde,hasta,valor,comentarios):
+    for d,h,v,p,c in zip(desde,hasta,valor,porcentajes,comentarios):
         if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
             continue
-        nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Comentarios':str(c or '').strip()})
+        nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Porcentaje':float(str(p or 0).replace(',','.')),'Comentarios':str(c or '').strip()})
     path='data/rangos_tickets.csv'
-    actual=asegurar_columna_comentarios(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
+    actual=asegurar_columnas_rangos(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Porcentaje','Comentarios'])
     actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
     if nuevos:
         actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
@@ -1306,14 +1423,15 @@ def calculada_config_admin_guardar(vid):
         desde=request.form.getlist('desde')
         hasta=request.form.getlist('hasta')
         valor=request.form.getlist('valor')
+        porcentajes=request.form.getlist('porcentaje_rango')
         comentarios=request.form.getlist('comentario_rango')
         nuevos=[]
-        for d,h,v,c in zip(desde,hasta,valor,comentarios):
+        for d,h,v,p,c in zip(desde,hasta,valor,porcentajes,comentarios):
             if str(d).strip()=='' or str(h).strip()=='' or str(v).strip()=='':
                 continue
-            nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Comentarios':str(c or '').strip()})
+            nuevos.append({'IdPregunta':vid,'Desde':float(d),'Hasta':float(h),'Valor':float(v),'Porcentaje':float(str(p or 0).replace(',','.')),'Comentarios':str(c or '').strip()})
         path='data/rangos_tickets.csv'
-        actual=asegurar_columna_comentarios(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
+        actual=asegurar_columnas_rangos(pd.read_csv(path).fillna('')) if os.path.exists(path) else pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Porcentaje','Comentarios'])
         actual=actual[actual['IdPregunta'].astype(str)!=str(vid)]
         if nuevos:
             actual=pd.concat([actual,pd.DataFrame(nuevos)],ignore_index=True)
@@ -1328,12 +1446,13 @@ def servicios_config_admin(fid):
     path='data/servicios_config.csv'
     if request.method=='POST':
         cfg=pd.read_csv(path).fillna('') if os.path.exists(path) else pd.DataFrame(columns=['IdFormulario','Parametro','Valor'])
-        valor=float(request.form.get('APLICAR_DISPONIBILIDAD',1) or 0)
-        mask=(cfg['IdFormulario'].astype(str)==str(fid)) & (cfg['Parametro'].astype(str)=='APLICAR_DISPONIBILIDAD')
-        if mask.any():
-            cfg.loc[mask,'Valor']=valor
-        else:
-            cfg.loc[len(cfg)]={'IdFormulario':fid,'Parametro':'APLICAR_DISPONIBILIDAD','Valor':valor}
+        for parametro, predeterminado in [('APLICAR_DISPONIBILIDAD',1),('HORAS_MES',164),('RECARGO_HORA_PCT',20)]:
+            valor=float(request.form.get(parametro,predeterminado) or predeterminado)
+            mask=(cfg['IdFormulario'].astype(str)==str(fid)) & (cfg['Parametro'].astype(str)==parametro)
+            if mask.any():
+                cfg.loc[mask,'Valor']=valor
+            else:
+                cfg.loc[len(cfg)]={'IdFormulario':fid,'Parametro':parametro,'Valor':valor}
         cfg.to_csv(path,index=False)
 
         params_path='data/calculos_parametros.csv'
@@ -1341,7 +1460,7 @@ def servicios_config_admin(fid):
         if 'IdPregunta' not in params.columns:
             params['IdPregunta']=''
         params=params[~((params['IdFormulario'].astype(str)==str(fid)) & (params['Operacion'].astype(str).str.upper()=='SERVICIOS_EXCEL'))]
-        for parametro in ['PRODUCTO_SERVICIO','PERFIL','PORCENTAJE','DISPONIBILIDAD','TOTAL_SERVICIO']:
+        for parametro in ['PRODUCTO_SERVICIO','PERFIL','PERFIL_HORA','PORCENTAJE','DISPONIBILIDAD','HORAS_RANGO','TOTAL_SERVICIO']:
             id_variable=int(float(request.form.get(parametro,0) or 0))
             params.loc[len(params)]={'IdFormulario':fid,'IdPregunta':int(request.form.get('TOTAL_SERVICIO',0) or 0),'Operacion':'SERVICIOS_EXCEL','Parametro':parametro,'IdVariable':id_variable}
         params.to_csv(params_path,index=False)
@@ -1350,8 +1469,10 @@ def servicios_config_admin(fid):
     token=escape(csrf_token())
     def input_param(nombre):
         return f"<div class='col-md-4'><label>{escape(nombre)}</label><input class='form-control' name='{escape(nombre)}' type='number' value='{escape(str(params.get(nombre,'')))}'></div>"
-    campos=''.join(input_param(nombre) for nombre in ['PRODUCTO_SERVICIO','PERFIL','PORCENTAJE','DISPONIBILIDAD','TOTAL_SERVICIO'])
+    campos=''.join(input_param(nombre) for nombre in ['PRODUCTO_SERVICIO','PERFIL','PERFIL_HORA','PORCENTAJE','DISPONIBILIDAD','HORAS_RANGO','TOTAL_SERVICIO'])
     aplicar=int(float(config.get('APLICAR_DISPONIBILIDAD',1) or 0))
+    horas_mes=float(config.get('HORAS_MES',164) or 164)
+    recargo_hora=float(config.get('RECARGO_HORA_PCT',20) or 0)
     seleccionado_si='selected' if aplicar==1 else ''
     seleccionado_no='selected' if aplicar!=1 else ''
     return f"""<!DOCTYPE html><html><head><meta charset='utf-8'>
@@ -1360,12 +1481,14 @@ def servicios_config_admin(fid):
 </head><body><div class='card'><div class='header'>Configurar Calculo 2005</div><div class='card-body'>
 <p><b>Logica:</b> la pregunta 2005 calcula el total de cada servicio usando las respuestas de otras preguntas asociadas por ID.</p>
 <p><b>Operacion:</b> SERVICIOS_EXCEL</p>
-<p><b>Formula:</b> Total servicio = Valor del Perfil x Porcentaje / 100. Si disponibilidad esta activa, suma recargo de disponibilidad sobre ese subtotal.</p>
+<p><b>Formula:</b> Por servicio = Valor de Perfil-Porcentaje x Porcentaje / 100. Por horas = Valor de Perfil-hora x Numero de horas. Si disponibilidad esta activa, suma recargo sobre ese subtotal.</p>
 <form method='post'>
 <input type='hidden' name='_csrf_token' value='{token}'>
 <div class='row g-2'>
 {campos}
 <div class='col-md-4'><label>Aplicar disponibilidad</label><select class='form-control' name='APLICAR_DISPONIBILIDAD'><option value='1' {seleccionado_si}>SI</option><option value='0' {seleccionado_no}>NO</option></select></div>
+<div class='col-md-4'><label>Horas base del mes</label><input class='form-control' name='HORAS_MES' type='number' min='1' step='1' value='{escape(str(int(horas_mes)))}'></div>
+<div class='col-md-4'><label>Recargo valor hora %</label><input class='form-control' name='RECARGO_HORA_PCT' type='number' min='0' step='any' value='{escape(str(recargo_hora))}'></div>
 </div>
 <button class='btn btn-primary mt-3'>Guardar Configuracion</button>
 </form>
@@ -2167,7 +2290,7 @@ def detalle_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponi
     cantidad_cotizada = total_tickets
     rango_aplicado = 'sin rango configurado'
     try:
-        rangos=pd.read_csv('data/rangos_tickets.csv')
+        rangos=asegurar_columnas_rangos(pd.read_csv('data/rangos_tickets.csv'))
         rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
         rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
         rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
@@ -2178,6 +2301,7 @@ def detalle_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponi
         if not coincidencia.empty:
             fila=coincidencia.iloc[0]
             valor_base=float(fila['Valor'])
+            porcentaje_rango=float(fila.get('Porcentaje',0) or 0)
             desde=float(fila.get('DesdeNum',0) or 0)
             hasta=float(fila.get('HastaNum',0) or 0)
             hasta_txt='mayor' if hasta>=999999999 else f'{hasta:g}'
@@ -2189,6 +2313,7 @@ def detalle_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponi
             ultimo=rangos_validos.iloc[-1]
             if total_tickets > float(ultimo['HastaNum']):
                 valor_base=float(ultimo['Valor'])
+                porcentaje_rango=float(ultimo.get('Porcentaje',0) or 0)
                 cantidad_cotizada=total_tickets
                 rango_aplicado=f"{float(ultimo.get('DesdeNum',0) or 0):g} en adelante"
     except Exception:
@@ -2201,12 +2326,15 @@ def detalle_rango_tickets(cantidad_tickets, operacion_delegada, horario, disponi
     if str(horario).strip().upper() == '7*24':
         porcentaje_disp = 0.0
 
-    valor_unitario=round(valor_base * (1 + porcentaje_horario/100) * (1 + porcentaje_disp/100), 2)
+    if 'porcentaje_rango' not in locals():
+        porcentaje_rango=0.0
+    valor_unitario=round(valor_base * (1 + porcentaje_rango/100) * (1 + porcentaje_horario/100) * (1 + porcentaje_disp/100), 2)
     return {
         'tickets_ingresados': total_tickets,
         'tickets_cotizados': cantidad_cotizada,
         'rango': rango_aplicado,
         'valor_base': valor_base,
+        'porcentaje_rango': porcentaje_rango,
         'valor_unitario': valor_unitario,
         'horario': horario,
         'porcentaje_horario': porcentaje_horario,
@@ -2255,9 +2383,37 @@ def etiqueta_rango_tickets(total_tickets, id_pregunta):
     return 'sin rango configurado'
 
 
+def detalle_rango_generico(valor_busqueda, id_pregunta):
+    try:
+        rangos=asegurar_columnas_rangos(pd.read_csv('data/rangos_tickets.csv').fillna(''))
+        rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
+        rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
+        rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
+        total=float(valor_busqueda or 0)
+        coincidencia=rangos[
+            (rangos['DesdeNum']<=total) &
+            (rangos['HastaNum']>=total)
+        ]
+        if coincidencia.empty:
+            return {}
+        fila=coincidencia.iloc[0]
+        desde=formato_numero_admin(fila.get('Desde',''))
+        hasta=formato_numero_admin(fila.get('Hasta',''))
+        return {
+            'desde':desde,
+            'hasta':hasta,
+            'etiqueta':f'{desde} - {hasta}',
+            'valor':float(fila.get('Valor',0) or 0),
+            'porcentaje':float(fila.get('Porcentaje',0) or 0),
+            'comentarios':comentario_pregunta(fila),
+        }
+    except Exception:
+        return {}
+
+
 def comentario_rango_tickets(total_tickets, id_pregunta):
     try:
-        rangos=asegurar_columna_comentarios(pd.read_csv('data/rangos_tickets.csv').fillna(''))
+        rangos=asegurar_columnas_rangos(pd.read_csv('data/rangos_tickets.csv').fillna(''))
         rangos=rangos[rangos['IdPregunta'].astype(str)==str(id_pregunta)]
         rangos['DesdeNum']=pd.to_numeric(rangos['Desde'],errors='coerce')
         rangos['HastaNum']=pd.to_numeric(rangos['Hasta'],errors='coerce')
@@ -2284,7 +2440,7 @@ def api_rangos():
     ruta=os.path.join('data','rangos_tickets.csv')
     if not os.path.exists(ruta):
         return jsonify({'ok':True,'rangos':[]})
-    df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
+    df=asegurar_columnas_rangos(pd.read_csv(ruta).fillna(''))
     if id_pregunta:
         df=df[df['IdPregunta'].astype(str)==id_pregunta]
     rangos=[]
@@ -2294,6 +2450,7 @@ def api_rangos():
             'desde':formato_numero_admin(r.get('Desde','')),
             'hasta':formato_numero_admin(r.get('Hasta','')),
             'valor':formato_numero_admin(r.get('Valor','')),
+            'porcentaje':formato_numero_admin(r.get('Porcentaje',0)),
             'comentarios':str(r.get('Comentarios','')),
         })
     return jsonify({'ok':True,'rangos':rangos})
@@ -2309,14 +2466,15 @@ def api_guardar_rango():
     ruta=os.path.join('data','rangos_tickets.csv')
     existe=os.path.exists(ruta)
     if existe:
-        df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
+        df=asegurar_columnas_rangos(pd.read_csv(ruta).fillna(''))
     else:
-        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
+        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Porcentaje','Comentarios'])
     df.loc[len(df)]={
         'IdPregunta':data.get('idPregunta'),
         'Desde':data.get('desde'),
         'Hasta':data.get('hasta'),
         'Valor':data.get('valor'),
+        'Porcentaje':data.get('porcentaje',0),
         'Comentarios':data.get('comentarios',''),
     }
     df.to_csv(ruta,index=False)
@@ -2334,10 +2492,10 @@ def api_guardar_rangos_todos():
 
     ruta=os.path.join('data','rangos_tickets.csv')
     if os.path.exists(ruta):
-        df=asegurar_columna_comentarios(pd.read_csv(ruta).fillna(''))
+        df=asegurar_columnas_rangos(pd.read_csv(ruta).fillna(''))
         df=df[df['IdPregunta'].astype(str)!=id_pregunta]
     else:
-        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Comentarios'])
+        df=pd.DataFrame(columns=['IdPregunta','Desde','Hasta','Valor','Porcentaje','Comentarios'])
 
     nuevos=[]
     for r in rangos:
@@ -2346,6 +2504,7 @@ def api_guardar_rangos_todos():
             'Desde':r.get('desde',''),
             'Hasta':r.get('hasta',''),
             'Valor':r.get('valor',''),
+            'Porcentaje':r.get('porcentaje',0),
             'Comentarios':r.get('comentarios',''),
         })
     if nuevos:

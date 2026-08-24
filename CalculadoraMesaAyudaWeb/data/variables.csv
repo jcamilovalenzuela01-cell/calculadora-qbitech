@@ -60,7 +60,9 @@
 30207,302,Servicio,Nivel de Servicio,LISTA,PORCENTAJE,0.0,Activo,1,
 30208,302,Canales,"WhatsApp, Llamada",LISTA,PORCENTAJE,0.0,Activo,1,
 2001,200,Servicio,Producto/Servicio,LISTA,FIJO,0.0,Activo,1,
-2002,200,Servicio,Perfil,LISTA,FIJO,0.0,Activo,1,
+2002,200,Servicio,Perfil-Porcentaje,LISTA,FIJO,0.0,Activo,1,
 2003,200,Servicio,Porcentaje,NUMERO,FIJO,0.0,Activo,1,
 2004,200,Servicio,Disponibilidad,LISTA,FIJO,0.0,Activo,1,
 2005,200,Costos,Total Servicio,CALCULADA,SERVICIOS_EXCEL,0.0,Activo,0,
+2006,200,Servicio,Perfil-hora,LISTA,FIJO,0.0,Activo,1,
+2007,200,Servicio,Número de horas,CALCULADA,RANGO_HORAS,0.0,Activo,1,Rangos seleccionables para cotizar servicios por horas.

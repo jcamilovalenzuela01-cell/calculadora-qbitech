@@ -9,3 +9,5 @@ SERVICIOS_EXCEL,PERFIL,Perfil,Pregunta lista con perfiles y valores base,1
 SERVICIOS_EXCEL,PORCENTAJE,Porcentaje,Pregunta numerica que aplica porcentaje al valor del perfil,1
 SERVICIOS_EXCEL,DISPONIBILIDAD,Disponibilidad,Pregunta lista opcional para recargo,0
 SERVICIOS_EXCEL,TOTAL_SERVICIO,Total Servicio,Pregunta calculada principal,1
+SERVICIOS_EXCEL,PERFIL_HORA,Perfil-hora,Pregunta lista con perfiles y valores por hora,1
+SERVICIOS_EXCEL,HORAS_RANGO,Número de horas,Pregunta calculada con rangos de horas seleccionables,1

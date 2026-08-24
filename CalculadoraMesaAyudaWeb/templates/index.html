@@ -43,15 +43,64 @@ body{
 }
 .servicio-linea{
     border:1px solid #d9e2ef;
-    border-radius:10px;
-    padding:14px;
-    margin-bottom:12px;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:14px;
     background:#fff;
+    box-shadow:0 2px 8px rgba(8,43,87,.06);
 }
 .servicio-linea .linea-titulo{
     font-weight:700;
     color:#082b57;
-    margin-bottom:10px;
+    margin-bottom:14px;
+    letter-spacing:.01em;
+}
+.servicio-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px 12px;
+    align-items:end;
+    max-width:100%;
+}
+.servicio-campo label{
+    color:#1f2a37;
+    font-size:.9rem;
+    margin-bottom:6px;
+}
+.servicio-campo .form-control{
+    width:100%;
+    max-width:100%;
+    min-height:38px;
+    border-color:#d8e0eb;
+    border-radius:7px;
+}
+.servicio-campo .form-control:focus{
+    border-color:#7aa7e8;
+    box-shadow:0 0 0 .18rem rgba(13,110,253,.16);
+}
+.servicio-acciones{
+    display:flex;
+    align-items:end;
+    justify-content:flex-start;
+}
+.btn-quitar-servicio{
+    min-width:84px;
+    height:38px;
+    border-radius:7px;
+    white-space:nowrap;
+}
+@media (max-width: 992px){
+    .servicio-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+@media (max-width: 768px){
+    .servicio-grid{
+        grid-template-columns:1fr;
+    }
+    .btn-quitar-servicio{
+        width:100%;
+    }
 }
 .servicio-aviso{
     display:none;
@@ -661,51 +710,83 @@ function agregarServicio(datos={}){
     div.className='servicio-linea';
     div.innerHTML=
       '<div class="linea-titulo">Servicio '+indice+'</div>'+
-      '<div class="row g-2 align-items-end">'+
-        '<div class="col-md-3"><label class="form-label"><b>Producto/Servicio</b></label><select class="form-control servicio-producto"><option value="">Seleccione</option>'+opcionesHtml((CATALOGO_SERVICIOS.productos||[]).map(x=>({v:x})),'v','v')+'</select></div>'+
-        '<div class="col-md-4"><label class="form-label"><b>Perfil</b></label><select class="form-control servicio-perfil"><option value="">Seleccione</option></select></div>'+
-        '<div class="col-md-2"><label class="form-label"><b>Porcentaje</b></label><input type="number" min="0" step="1" class="form-control servicio-porcentaje"></div>'+
-        '<div class="col-md-2"><label class="form-label"><b>Disponibilidad</b></label><select class="form-control servicio-disponibilidad"><option value="">Seleccione</option>'+opcionesHtml(CATALOGO_SERVICIOS.disponibilidades||[],'opcion','opcion')+'</select></div>'+
-        '<div class="col-md-1"><button type="button" class="btn btn-outline-danger w-100" onclick="eliminarServicio(this)">Quitar</button></div>'+
+      '<div class="servicio-grid">'+
+        '<div class="servicio-campo"><label class="form-label"><b>Tipo</b></label><select class="form-control servicio-tipo"><option value="SERVICIO">Por servicio</option><option value="HORAS">Por horas</option></select></div>'+
+        '<div class="servicio-campo"><label class="form-label"><b>Producto/Servicio</b></label><select class="form-control servicio-producto"><option value="">Seleccione</option>'+opcionesHtml((CATALOGO_SERVICIOS.productos||[]).map(x=>({v:x})),'v','v')+'</select></div>'+
+        '<div class="servicio-campo"><label class="form-label servicio-perfil-label"><b>Perfil</b></label><select class="form-control servicio-perfil"><option value="">Seleccione</option></select></div>'+
+        '<div class="servicio-campo campo-porcentaje"><label class="form-label"><b>Porcentaje</b></label><input type="number" min="0" step="1" class="form-control servicio-porcentaje"></div>'+
+        '<div class="servicio-campo campo-horas d-none"><label class="form-label"><b>Número de horas</b></label><select class="form-control servicio-horas"><option value="">Seleccione</option>'+opcionesHtml(CATALOGO_SERVICIOS.rangos_horas||[],'valor','etiqueta')+'</select></div>'+
+        '<div class="servicio-campo"><label class="form-label"><b>Disponibilidad</b></label><select class="form-control servicio-disponibilidad"><option value="">Seleccione</option>'+opcionesHtml(CATALOGO_SERVICIOS.disponibilidades||[],'opcion','opcion')+'</select></div>'+
+        '<div class="servicio-acciones"><button type="button" class="btn btn-outline-danger btn-quitar-servicio" onclick="eliminarServicio(this)">Quitar</button></div>'+
       '</div>'+
-      '<div class="servicio-aviso">Complete Producto/Servicio, Perfil y Porcentaje para cotizar esta línea.</div>';
+      '<div class="servicio-aviso">Complete Producto/Servicio, Perfil y el valor requerido para cotizar esta línea.</div>';
     contenedor.appendChild(div);
     const producto=div.querySelector('.servicio-producto');
     producto.addEventListener('change',()=>actualizarPerfilesServicio(div));
+    div.querySelector('.servicio-tipo').addEventListener('change',()=>actualizarModoServicio(div));
     div.querySelectorAll('input,select').forEach(c=>c.addEventListener('input',()=>validarLineaServicio(div)));
+    if(datos.tipo_cotizacion) div.querySelector('.servicio-tipo').value=datos.tipo_cotizacion;
     if(datos.producto_servicio) producto.value=datos.producto_servicio;
     actualizarPerfilesServicio(div);
     if(datos.perfil) div.querySelector('.servicio-perfil').value=datos.perfil;
     if(datos.porcentaje) div.querySelector('.servicio-porcentaje').value=datos.porcentaje;
+    if(datos.horas) div.querySelector('.servicio-horas').value=datos.horas;
     if(datos.disponibilidad) div.querySelector('.servicio-disponibilidad').value=datos.disponibilidad;
+    actualizarModoServicio(div);
     validarLineaServicio(div);
+}
+
+function actualizarModoServicio(linea){
+    const tipo=linea.querySelector('.servicio-tipo')?.value||'SERVICIO';
+    const esHoras=tipo==='HORAS';
+    const etiqueta=linea.querySelector('.servicio-perfil-label');
+    if(etiqueta) etiqueta.innerHTML='<b>Perfil</b>';
+    linea.querySelector('.campo-porcentaje')?.classList.toggle('d-none',esHoras);
+    linea.querySelector('.campo-horas')?.classList.toggle('d-none',!esHoras);
+    if(esHoras){
+        const porcentaje=linea.querySelector('.servicio-porcentaje');
+        if(porcentaje) porcentaje.value='';
+    }else{
+        const horas=linea.querySelector('.servicio-horas');
+        if(horas) horas.value='';
+    }
+    actualizarPerfilesServicio(linea);
+    validarLineaServicio(linea);
 }
 
 function actualizarPerfilesServicio(linea){
     const producto=linea.querySelector('.servicio-producto').value;
+    const tipo=linea.querySelector('.servicio-tipo')?.value||'SERVICIO';
     const perfil=linea.querySelector('.servicio-perfil');
     const actual=perfil.value;
-    const perfiles=(CATALOGO_SERVICIOS.perfiles||[]).filter(x=>String(x.producto)===String(producto));
+    const fuente=tipo==='HORAS' ? (CATALOGO_SERVICIOS.perfiles_hora||[]) : (CATALOGO_SERVICIOS.perfiles||[]);
+    const perfiles=fuente.filter(x=>String(x.producto)===String(producto));
     perfil.innerHTML='<option value="">Seleccione</option>'+opcionesHtml(perfiles,'perfil','perfil');
     if([...perfil.options].some(o=>o.value===actual)) perfil.value=actual;
     validarLineaServicio(linea);
 }
 
 function datosLineaServicio(linea){
+    const horas=linea.querySelector('.servicio-horas');
     return {
+        tipo_cotizacion:linea.querySelector('.servicio-tipo')?.value||'SERVICIO',
         producto_servicio:linea.querySelector('.servicio-producto')?.value||'',
         perfil:linea.querySelector('.servicio-perfil')?.value||'',
         porcentaje:linea.querySelector('.servicio-porcentaje')?.value||'',
+        horas:horas?.value||'',
+        horas_rango:horas?.selectedOptions?.[0]?.textContent||'',
         disponibilidad:linea.querySelector('.servicio-disponibilidad')?.value||''
     };
 }
 
 function lineaServicioConDatos(datos){
-    return Boolean(datos.producto_servicio || datos.perfil || datos.porcentaje || datos.disponibilidad);
+    return Boolean(datos.producto_servicio || datos.perfil || datos.porcentaje || datos.horas || datos.disponibilidad);
 }
 
 function lineaServicioCompleta(datos){
-    return Boolean(datos.producto_servicio && datos.perfil && Number(datos.porcentaje)>0);
+    if(!datos.producto_servicio || !datos.perfil) return false;
+    if(datos.tipo_cotizacion==='HORAS') return Number(datos.horas)>0;
+    return Number(datos.porcentaje)>0;
 }
 
 function validarLineaServicio(linea){
@@ -721,7 +802,7 @@ function validarServiciosCompletos(){
     document.querySelectorAll('.servicio-linea').forEach(linea=>{
         if(!validarLineaServicio(linea)) ok=false;
     });
-    if(!ok) alert('Complete Producto/Servicio, Perfil y Porcentaje en cada línea antes de continuar.');
+    if(!ok) alert('Complete Tipo, Producto/Servicio, Perfil y el valor requerido en cada linea antes de continuar.');
     return ok;
 }
 
